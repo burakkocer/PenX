@@ -6,6 +6,7 @@
  * Runs early in <head> to apply the correct data attributes before hydration,
  * preventing layout or theme flicker and keeping RootLayout fully static.
  */
+import { SUPPORTED_LOCALES } from "@/lib/i18n/locales";
 import { PREFERENCE_DEFAULTS, PREFERENCE_PERSISTENCE } from "@/lib/preferences/preferences-config";
 
 export function ThemeBootScript() {
@@ -17,6 +18,7 @@ export function ThemeBootScript() {
     navbar_style: PREFERENCE_PERSISTENCE.navbar_style,
     sidebar_variant: PREFERENCE_PERSISTENCE.sidebar_variant,
     sidebar_collapsible: PREFERENCE_PERSISTENCE.sidebar_collapsible,
+    locale: PREFERENCE_PERSISTENCE.locale,
   });
 
   const defaults = JSON.stringify({
@@ -27,7 +29,10 @@ export function ThemeBootScript() {
     navbar_style: PREFERENCE_DEFAULTS.navbar_style,
     sidebar_variant: PREFERENCE_DEFAULTS.sidebar_variant,
     sidebar_collapsible: PREFERENCE_DEFAULTS.sidebar_collapsible,
+    locale: PREFERENCE_DEFAULTS.locale,
   });
+
+  const supportedLocales = JSON.stringify(SUPPORTED_LOCALES);
 
   const code = `
     (function () {
@@ -35,6 +40,7 @@ export function ThemeBootScript() {
         var root = document.documentElement;
         var PERSISTENCE = ${persistence};
         var DEFAULTS = ${defaults};
+        var SUPPORTED_LOCALES = ${supportedLocales};
 
         function readCookie(name) {
           var match = document.cookie.split("; ").find(function(c) {
@@ -77,6 +83,7 @@ export function ThemeBootScript() {
         var rawNavbarStyle = readPreference("navbar_style", DEFAULTS.navbar_style);
         var rawSidebarVariant = readPreference("sidebar_variant", DEFAULTS.sidebar_variant);
         var rawSidebarCollapsible = readPreference("sidebar_collapsible", DEFAULTS.sidebar_collapsible);
+        var rawLocale = readPreference("locale", DEFAULTS.locale);
 
         var isValidMode = rawMode === "dark" || rawMode === "light" || rawMode === "system";
         var mode = isValidMode ? rawMode : DEFAULTS.theme_mode;
@@ -90,6 +97,8 @@ export function ThemeBootScript() {
         var navbarStyle = rawNavbarStyle || DEFAULTS.navbar_style;
         var sidebarVariant = rawSidebarVariant || DEFAULTS.sidebar_variant;
         var sidebarCollapsible = rawSidebarCollapsible || DEFAULTS.sidebar_collapsible;
+        var isValidLocale = SUPPORTED_LOCALES.indexOf(rawLocale) !== -1;
+        var locale = isValidLocale ? rawLocale : DEFAULTS.locale;
 
         root.classList.toggle("dark", resolvedMode === "dark");
         root.setAttribute("data-theme-mode", mode);
@@ -99,6 +108,8 @@ export function ThemeBootScript() {
         root.setAttribute("data-navbar-style", navbarStyle);
         root.setAttribute("data-sidebar-variant", sidebarVariant);
         root.setAttribute("data-sidebar-collapsible", sidebarCollapsible);
+        root.setAttribute("data-locale", locale);
+        root.setAttribute("lang", locale);
 
         root.style.colorScheme = resolvedMode === "dark" ? "dark" : "light";
 

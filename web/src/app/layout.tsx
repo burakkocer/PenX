@@ -18,11 +18,11 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  const { theme_mode, theme_preset, content_layout, navbar_style, sidebar_variant, sidebar_collapsible, font } =
+  const { theme_mode, theme_preset, content_layout, navbar_style, sidebar_variant, sidebar_collapsible, font, locale } =
     PREFERENCE_DEFAULTS;
   return (
     <html
-      lang="en"
+      lang={locale}
       data-theme-mode={theme_mode}
       data-theme-preset={theme_preset}
       data-content-layout={content_layout}
@@ -30,10 +30,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       data-sidebar-variant={sidebar_variant}
       data-sidebar-collapsible={sidebar_collapsible}
       data-font={font}
+      data-locale={locale}
       suppressHydrationWarning
     >
       <head>
-        {/* Applies theme and layout preferences on load to avoid flicker and unnecessary server rerenders. */}
+        {/* Applies theme, layout and language preferences on load to avoid flicker and unnecessary server rerenders. */}
         <ThemeBootScript />
       </head>
       <body className={`${fontVars} min-h-screen antialiased`}>
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             contentLayout={content_layout}
             navbarStyle={navbar_style}
             font={font}
+            locale={locale}
           >
             {children}
             <Toaster />

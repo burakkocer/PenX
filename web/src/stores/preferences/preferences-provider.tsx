@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { type StoreApi, useStore } from "zustand";
 
 import { type FontKey, fontRegistry } from "@/lib/fonts/registry";
+import { SUPPORTED_LOCALES } from "@/lib/i18n/locales";
 import {
   CONTENT_LAYOUT_VALUES,
   NAVBAR_STYLE_VALUES,
@@ -40,6 +41,7 @@ function readDomState(): Partial<PreferencesState> {
     navbarStyle: getSafeValue(root.getAttribute("data-navbar-style"), NAVBAR_STYLE_VALUES),
     sidebarVariant: getSafeValue(root.getAttribute("data-sidebar-variant"), SIDEBAR_VARIANT_VALUES),
     sidebarCollapsible: getSafeValue(root.getAttribute("data-sidebar-collapsible"), SIDEBAR_COLLAPSIBLE_VALUES),
+    locale: getSafeValue(root.getAttribute("data-locale"), SUPPORTED_LOCALES),
   };
 }
 
@@ -50,6 +52,7 @@ export const PreferencesStoreProvider = ({
   font,
   contentLayout,
   navbarStyle,
+  locale,
 }: {
   children: React.ReactNode;
   themeMode: PreferencesState["themeMode"];
@@ -57,6 +60,7 @@ export const PreferencesStoreProvider = ({
   font: PreferencesState["font"];
   contentLayout: PreferencesState["contentLayout"];
   navbarStyle: PreferencesState["navbarStyle"];
+  locale: PreferencesState["locale"];
 }) => {
   const [store] = useState<StoreApi<PreferencesState>>(() =>
     createPreferencesStore({
@@ -65,6 +69,7 @@ export const PreferencesStoreProvider = ({
       font,
       contentLayout,
       navbarStyle,
+      locale,
     }),
   );
 
