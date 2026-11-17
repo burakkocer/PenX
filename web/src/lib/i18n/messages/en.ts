@@ -54,6 +54,9 @@ const en = {
   "auth.login.submitting": "Signing in...",
   "auth.login.errorMustAgree": "Please read and agree to the Terms of Use first",
   "auth.login.errorBackend": "Could not connect to the backend service",
+  // Thrown by lib/api.ts's central fetch wrapper on any 401 response
+  // (session expired or invalid token), not just on the login page.
+  "auth.unauthorized": "Unauthorized — please sign in again",
   "auth.login.errorCredentials": "Incorrect username or password",
 
   // Login page — terms of use dialog

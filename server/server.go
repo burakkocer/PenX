@@ -21,6 +21,7 @@ import (
 
 	"github.com/Autumn-27/artex/agent"
 	"github.com/Autumn-27/artex/db"
+	"github.com/Autumn-27/artex/i18n"
 	"github.com/Autumn-27/artex/intercept"
 	"github.com/Autumn-27/artex/llmpool"
 	"github.com/Autumn-27/artex/llmrec"
@@ -3898,6 +3899,16 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 func writeErr(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]any{"error": msg})
+}
+
+// writeErrKey is the localized counterpart to writeErr: it resolves msg
+// via i18n.T using the caller's Accept-Language header (see
+// i18n.FromRequest), instead of writing a hardcoded string. Existing
+// writeErr(w, code, "<literal>") call sites are unaffected and keep
+// working exactly as before until migrated to this one — this is an
+// incremental, package-by-package migration (see i18n package comment).
+func writeErrKey(w http.ResponseWriter, r *http.Request, code int, key i18n.Key, args ...any) {
+	writeErr(w, code, i18n.T(i18n.FromRequest(r), key, args...))
 }
 
 func atoiDefault(s string, d int) int {

@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/Autumn-27/artex/i18n"
 )
 
 // GetSetting 对"键不存在"和"读取出错"的返回值只差一个 error：两种情况 value 都是
@@ -76,7 +78,7 @@ func TestValidatePassword(t *testing.T) {
 		{"73 字节超出 bcrypt 上限", strings.Repeat("a", 73), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := validatePassword(tc.pw); (got != "") != tc.wantErr {
+			if got := validatePassword(i18n.EN, tc.pw); (got != "") != tc.wantErr {
 				t.Fatalf("validatePassword(%q)=%q, wantErr=%v", tc.pw, got, tc.wantErr)
 			}
 		})

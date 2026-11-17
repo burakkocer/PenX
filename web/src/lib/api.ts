@@ -4,6 +4,8 @@
 // are passed through and formatted at the call site.
 
 import type { ChatMention } from "@/lib/chat-mentions";
+import { getClientCookie } from "@/lib/cookie.client";
+import { DEFAULT_LOCALE, isLocale, t } from "@/lib/i18n";
 import { MOCK } from "@/lib/mock/enabled";
 import { mockHandle } from "@/lib/mock/handler";
 import type {
@@ -111,6 +113,17 @@ function getToken(): string | null {
   return localStorage.getItem("artex_token");
 }
 
+// The in-app language switcher (see lib/i18n) does not always match the
+// browser's own Accept-Language, so we send the user's chosen UI locale
+// explicitly rather than relying on the browser default — the backend
+// (see i18n.FromRequest in the Go server) reads this same header to
+// localize error messages to match what's shown in the UI.
+function getUiLocale() {
+  if (typeof window === "undefined") return DEFAULT_LOCALE;
+  const cookie = getClientCookie("locale");
+  return isLocale(cookie) ? cookie : DEFAULT_LOCALE;
+}
+
 export async function http<T>(path: string, init?: RequestInit): Promise<T> {
   if (MOCK) return mockHandle<T>(init?.method ?? "GET", path, init?.body ?? null);
   const token = getToken();
@@ -119,6 +132,7 @@ export async function http<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      "Accept-Language": getUiLocale(),
       ...(init?.headers as Record<string, string> | undefined),
     },
   });
@@ -128,7 +142,7 @@ export async function http<T>(path: string, init?: RequestInit): Promise<T> {
       document.cookie = "artex_token=; path=/; max-age=0";
       window.location.href = "/login";
     }
-    throw new Error("未授权");
+    throw new Error(t(getUiLocale(), "auth.unauthorized"));
   }
   if (!r.ok) {
     const fallback = `${init?.method ?? "GET"} ${path}: ${r.status}`;
@@ -825,8 +839,7 @@ export const api = {
   // 渠道是多实例资源（同一类型可配多个机器人、各有过滤规则），因此独立成组，
   // 不塞进扁平的 settings 键值里。
   notifyMeta: () => get<NotificationMeta>(`/notify/meta`),
-  notifyChannels: () =>
-    get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
+  notifyChannels: () => get<{ channels: NotificationChannel[] }>(`/notify/channels`).then((r) => arr(r.channels)),
   notifyCreateChannel: (payload: {
     name: string;
     kind: string;

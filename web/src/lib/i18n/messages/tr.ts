@@ -52,6 +52,7 @@ const tr: Record<keyof typeof en, string> = {
   "auth.login.submitting": "Giriş yapılıyor...",
   "auth.login.errorMustAgree": "Lütfen önce Kullanım Koşulları'nı okuyup kabul edin",
   "auth.login.errorBackend": "Arka uç hizmetine bağlanılamadı",
+  "auth.unauthorized": "Yetkisiz işlem — lütfen yeniden giriş yapın",
   "auth.login.errorCredentials": "Kullanıcı adı veya parola hatalı",
 
   // Login page — terms of use dialog
