@@ -1,0 +1,116 @@
+package i18n
+
+func init() {
+	for k, v := range reportEN {
+		messagesEN[k] = v
+	}
+	for k, v := range reportTR {
+		messagesTR[k] = v
+	}
+}
+
+var reportEN = map[Key]string{
+	"report.title":         "Penetration Test Report — %s",
+	"report.untitledTask":  "Untitled task",
+	"report.goal":          "- **Task goal**: %s",
+	"report.unspecified":   "(not specified)",
+	"report.generatedAt":   "- **Generated at**: %s",
+	"report.summary":       "Summary",
+	"report.confirmed":     "- Confirmed findings: **%d**",
+	"report.assets":        "- Assets: ",
+	"report.findings":      "Findings",
+	"report.noFindings":    "_No vulnerabilities were confirmed in this run._",
+	"report.uncategorized": "Uncategorized",
+	"report.poc":           "**PoC / Evidence:**",
+
+	"report.fTitle":      "Vulnerability Findings Summary Report",
+	"report.fTotal":      "- **Total findings**: %d",
+	"report.sevTable":    "| Severity | Count |\n| --- | --- |\n",
+	"report.sevCritical": "Critical",
+	"report.sevHigh":     "High",
+	"report.sevMedium":   "Medium",
+	"report.sevLow":      "Low",
+	"report.fNone":       "_No matching vulnerabilities._",
+	"report.fDetails":    "Vulnerability details",
+	"report.fClass":      "- **Category**: %s",
+	"report.fSeverity":   "- **Severity**: %s",
+	"report.fStatus":     "- **Status**: %s",
+	"report.fTask":       "- **Task**: %s",
+	"report.fFoundAt":    "- **Discovered at**: %s",
+	"report.fEvidence":   "**Evidence:**",
+	"report.fReport":     "**Detailed report:**",
+	"report.sSummary":    "Overview",
+	"report.sEvidence":   "Evidence",
+	"report.sReport":     "Detailed report",
+
+	"report.tHeading": "Linked traffic evidence",
+	"report.tVersion": "Evidence version: %d; bindings: %d.",
+	"report.tStale":   "Evidence has changed; the detailed report needs to be updated.",
+	"report.tItem":    "%d. **Evidence #%d · %s** — `%s %s`, status code %d",
+	"report.tReq":     "Request",
+	"report.tResp":    "Response",
+
+	"report.csvID":        "ID",
+	"report.csvName":      "Name",
+	"report.csvClass":     "Category",
+	"report.csvSeverity":  "Severity",
+	"report.csvStatus":    "Status",
+	"report.csvTask":      "Task",
+	"report.csvFoundAt":   "Discovered at",
+	"report.csvSummary":   "Overview",
+	"report.csvTrafficN":  "Traffic evidence count",
+	"report.csvTrafficID": "Traffic evidence IDs",
+}
+
+var reportTR = map[Key]string{
+	"report.title":         "Sızma Testi Raporu — %s",
+	"report.untitledTask":  "Adsız görev",
+	"report.goal":          "- **Görev hedefi**: %s",
+	"report.unspecified":   "(belirtilmedi)",
+	"report.generatedAt":   "- **Oluşturulma zamanı**: %s",
+	"report.summary":       "Özet",
+	"report.confirmed":     "- Doğrulanan bulgular: **%d**",
+	"report.assets":        "- Varlıklar: ",
+	"report.findings":      "Bulgular",
+	"report.noFindings":    "_Bu çalışmada doğrulanmış bir zafiyet bulunmadı._",
+	"report.uncategorized": "Kategorisiz",
+	"report.poc":           "**PoC / Kanıt:**",
+
+	"report.fTitle":      "Zafiyet Bulguları Özet Raporu",
+	"report.fTotal":      "- **Toplam bulgu sayısı**: %d",
+	"report.sevTable":    "| Önem Derecesi | Adet |\n| --- | --- |\n",
+	"report.sevCritical": "Kritik",
+	"report.sevHigh":     "Yüksek",
+	"report.sevMedium":   "Orta",
+	"report.sevLow":      "Düşük",
+	"report.fNone":       "_Eşleşen zafiyet yok._",
+	"report.fDetails":    "Zafiyet ayrıntıları",
+	"report.fClass":      "- **Kategori**: %s",
+	"report.fSeverity":   "- **Önem derecesi**: %s",
+	"report.fStatus":     "- **Durum**: %s",
+	"report.fTask":       "- **Görev**: %s",
+	"report.fFoundAt":    "- **Keşfedilme zamanı**: %s",
+	"report.fEvidence":   "**Kanıt:**",
+	"report.fReport":     "**Ayrıntılı rapor:**",
+	"report.sSummary":    "Genel bakış",
+	"report.sEvidence":   "Kanıt",
+	"report.sReport":     "Ayrıntılı rapor",
+
+	"report.tHeading": "İlişkili trafik kanıtı",
+	"report.tVersion": "Kanıt sürümü: %d; bağlama sayısı: %d.",
+	"report.tStale":   "Kanıt değişti; ayrıntılı raporun güncellenmesi gerekiyor.",
+	"report.tItem":    "%d. **Kanıt #%d · %s** — `%s %s`, durum kodu %d",
+	"report.tReq":     "İstek",
+	"report.tResp":    "Yanıt",
+
+	"report.csvID":        "ID",
+	"report.csvName":      "Ad",
+	"report.csvClass":     "Kategori",
+	"report.csvSeverity":  "Önem derecesi",
+	"report.csvStatus":    "Durum",
+	"report.csvTask":      "Görev",
+	"report.csvFoundAt":   "Keşfedilme zamanı",
+	"report.csvSummary":   "Genel bakış",
+	"report.csvTrafficN":  "Trafik kanıtı sayısı",
+	"report.csvTrafficID": "Trafik kanıtı ID'leri",
+}
