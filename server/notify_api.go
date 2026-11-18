@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Autumn-27/artex/db"
+	"github.com/Autumn-27/artex/i18n"
 	"github.com/Autumn-27/artex/notify"
 )
 
@@ -423,7 +424,7 @@ func (s *Server) notifyTestChannel(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 400, err.Error())
 		return
 	}
-	msg := notifyTestMessage(s.notifierBaseURL(pg))
+	msg := notifyTestMessage(i18n.FromRequest(r), s.notifierBaseURL(pg))
 	start := time.Now()
 	// 测试消息只有一条，送达条数这里不需要（渠道长度上限对单条消息而言
 	// 由截断兜底，不涉及分段）。
@@ -440,14 +441,14 @@ func (s *Server) notifyTestChannel(w http.ResponseWriter, r *http.Request) {
 
 // notifyTestMessage 构造测试消息。刻意用一眼能看出是测试的内容：
 // 收到的人不应该把它误判成真实漏洞。
-func notifyTestMessage(baseURL string) notify.Message {
+func notifyTestMessage(loc i18n.Locale, baseURL string) notify.Message {
 	return notify.Message{
 		Items: []notify.Item{{
 			FindingID: 0,
-			Name:      "测试消息 · 渠道配置正常",
-			VulnClass: "连通性测试",
+			Name:      i18n.T(loc, "notify.test.name"),
+			VulnClass: i18n.T(loc, "notify.test.class"),
 			Severity:  "low",
-			Summary:   "这是 ARTEX 推送渠道的测试消息，收到即表示该渠道配置可用。",
+			Summary:   i18n.T(loc, "notify.test.summary"),
 			Assets:    []string{"artex.example.com"},
 			DetailURL: baseURL,
 		}},

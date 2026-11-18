@@ -111,7 +111,7 @@ func telegramHTML(m Message) (string, int) {
 		// Telegram 的上限是**字符数**，所以打包也按字符计量（runeSize）。
 		footer := ""
 		if m.HomeURL != "" {
-			footer = fmt.Sprintf("\n\n<a href=\"%s\">在平台中查看全部</a>", telegramEscapeAttr(m.HomeURL))
+			footer = fmt.Sprintf("\n\n<a href=\"%s\">%s</a>", telegramEscapeAttr(m.HomeURL), telegramEscape(tr("notify.link.viewAll")))
 		}
 		kept := packItemCount(m.Items, telegramTextLimit, telegramReservedRunes, footer, runeSize, func(it Item, idx int) string {
 			return telegramBatchLine(it, idx+1)
@@ -130,20 +130,20 @@ func telegramHTML(m Message) (string, int) {
 	}
 	it := m.Items[0]
 	if it.IsStatusChange() {
-		b.WriteString(fmt.Sprintf("\n<b>状态变更</b>：%s → %s",
+		b.WriteString(fmt.Sprintf("\n<b>%s</b>: %s → %s", telegramEscape(tr("notify.label.statusChange")),
 			telegramEscape(StatusLabel(it.FromStatus)), telegramEscape(StatusLabel(it.ToStatus))))
 	}
 	if it.VulnClass != "" && it.VulnClass != it.Title() {
-		b.WriteString("\n<b>类型</b>：" + telegramEscape(it.VulnClass))
+		b.WriteString("\n<b>" + telegramEscape(tr("notify.label.type")) + "</b>: " + telegramEscape(it.VulnClass))
 	}
 	if a := assetLine(it.Assets, maxAssetsShown); a != "" {
-		b.WriteString("\n<b>资产</b>：" + telegramEscape(a))
+		b.WriteString("\n<b>" + telegramEscape(tr("notify.label.assets")) + "</b>: " + telegramEscape(a))
 	}
 	if s := OneLine(it.Summary, maxSummaryRunes); s != "" {
-		b.WriteString("\n<b>摘要</b>：" + telegramEscape(s))
+		b.WriteString("\n<b>" + telegramEscape(tr("notify.label.summary")) + "</b>: " + telegramEscape(s))
 	}
 	if it.DetailURL != "" {
-		b.WriteString(fmt.Sprintf("\n\n<a href=\"%s\">查看详情</a>", telegramEscapeAttr(it.DetailURL)))
+		b.WriteString(fmt.Sprintf("\n\n<a href=\"%s\">%s</a>", telegramEscapeAttr(it.DetailURL), telegramEscape(tr("notify.link.viewDetail"))))
 	}
 	return TruncateHTML(b.String(), telegramTextLimit), 1
 }
@@ -162,12 +162,12 @@ func telegramBatchLine(it Item, idx int) string {
 // telegramBatchTitle 渲染汇总消息的标题行。条数用的是**本条实际包含**的条数，
 // 而不是本批总数——否则读者会以为消息头写的数字就是全部。
 func telegramBatchTitle(m Message, items []Item, total int) string {
-	title := fmt.Sprintf("漏洞汇总 · 共 %d 条", total)
+	title := tr("notify.title.batch", total)
 	if extra := total - len(items); extra > 0 {
-		title += fmt.Sprintf("（显示前 %d 条，其余 %d 条下一条继续）", len(items), extra)
+		title += tr("notify.tg.truncated", len(items), extra)
 	}
 	if m.WindowMinutes > 0 {
-		title = fmt.Sprintf("近 %d 分钟 · %s", m.WindowMinutes, title)
+		title = tr("notify.tg.windowTitle", m.WindowMinutes, title)
 	}
 	return title
 }

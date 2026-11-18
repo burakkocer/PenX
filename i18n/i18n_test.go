@@ -47,3 +47,35 @@ func TestTFallback(t *testing.T) {
 		t.Errorf("T with unknown key should fall back to the key itself, got %q", got)
 	}
 }
+
+func TestNotifyLocaleFromEnvValue(t *testing.T) {
+	cases := map[string]Locale{
+		"":            EN,
+		"en":          EN,
+		"EN":          EN,
+		"tr":          TR,
+		"tr-TR":       TR,
+		"tr_TR":       TR,
+		"tr_TR.UTF-8": TR,
+		" tr ":        TR,
+		"fr":          EN,
+		"zh-CN":       EN,
+	}
+	for v, want := range cases {
+		if got := notifyLocaleFromEnvValue(v); got != want {
+			t.Errorf("notifyLocaleFromEnvValue(%q) = %q, want %q", v, got, want)
+		}
+	}
+}
+
+func TestSetNotifyLocale(t *testing.T) {
+	defer SetNotifyLocale(EN)
+	SetNotifyLocale(TR)
+	if got := NotifyLocale(); got != TR {
+		t.Errorf("NotifyLocale() = %q after SetNotifyLocale(TR)", got)
+	}
+	SetNotifyLocale(EN)
+	if got := NotifyLocale(); got != EN {
+		t.Errorf("NotifyLocale() = %q after SetNotifyLocale(EN)", got)
+	}
+}

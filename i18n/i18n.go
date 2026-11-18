@@ -15,7 +15,9 @@ package i18n
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 )
 
 type Locale string
@@ -84,4 +86,46 @@ func FromAcceptLanguage(header string) Locale {
 		}
 	}
 	return DefaultLocale
+}
+
+// Notification locale.
+//
+// Outgoing notifications (IM messages, emails, webhooks, delivery failure
+// reasons) are produced by background workers with no HTTP request, hence no
+// Accept-Language header. They use one process-wide locale instead, selected
+// by the ARTEX_LANG environment variable ("en", "tr", "tr-TR", "tr_TR.UTF-8",
+// ...). Unset or unsupported values mean English.
+var (
+	notifyOnce   sync.Once
+	notifyMu     sync.RWMutex
+	notifyLocale = DefaultLocale
+)
+
+// notifyLocaleFromEnvValue parses an ARTEX_LANG value. It reuses the
+// Accept-Language parser after normalizing POSIX-style separators.
+func notifyLocaleFromEnvValue(v string) Locale {
+	return FromAcceptLanguage(strings.ReplaceAll(strings.TrimSpace(v), "_", "-"))
+}
+
+// NotifyLocale returns the locale used for server-generated notification
+// text. The environment is read once, on first use.
+func NotifyLocale() Locale {
+	notifyOnce.Do(func() {
+		l := notifyLocaleFromEnvValue(os.Getenv("ARTEX_LANG"))
+		notifyMu.Lock()
+		notifyLocale = l
+		notifyMu.Unlock()
+	})
+	notifyMu.RLock()
+	defer notifyMu.RUnlock()
+	return notifyLocale
+}
+
+// SetNotifyLocale overrides the notification locale (intended for tests).
+// It also disables the lazy ARTEX_LANG read so the override sticks.
+func SetNotifyLocale(l Locale) {
+	notifyOnce.Do(func() {})
+	notifyMu.Lock()
+	notifyLocale = l
+	notifyMu.Unlock()
 }

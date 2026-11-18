@@ -1,6 +1,6 @@
 // Package notify 实现漏洞发现的 IM / 邮件推送渠道适配层。
 //
-// 分层：本包是**叶子包**，只依赖标准库。它不认识数据库、不认识 server。渠道配置
+// 分层：本包是**叶子包**，只依赖标准库与同样只依赖标准库的 i18n 包（用于消息文案本地化）。它不认识数据库、不认识 server。渠道配置
 // 以 map[string]any 传入（对应 notification_channels.config 这一 JSONB 列），
 // 待推送内容以 Message 传入。这样拆开的好处是：签名计算、UTF-8 截断、过滤匹配这些
 // 真正容易出错的地方可以脱离 PostgreSQL 单测，宿主只需在 server 侧做编排。
@@ -9,6 +9,8 @@
 // （甚至同一渠道的多个机器人实例）并发复用，所有凭据一律从 cfg 参数传入，
 // 不允许把 webhook URL 之类的东西缓存进实现自身的字段。
 package notify
+
+import "github.com/Autumn-27/artex/i18n"
 
 // 渠道类型标识。取值同时是 notification_channels.kind 的合法集合，由 server 侧
 // 白名单校验（与 findings.status 同理，不用 DB CHECK，方便后续加渠道）。
@@ -42,47 +44,32 @@ var severityRank = map[string]int{
 // SeverityRank 返回级别的序数；未知级别返回 0。
 func SeverityRank(severity string) int { return severityRank[severity] }
 
-// SeverityLabel 返回带 emoji 的中文级别名，用于消息标题与卡片配色。
-// 未知级别原样回显，不臆造。
+// SeverityLabel 返回带 emoji 的级别名（按通知语言本地化，见 i18n.NotifyLocale），
+// 用于消息标题与卡片配色。未知级别原样回显，不臆造。
 func SeverityLabel(severity string) string {
 	switch severity {
-	case "critical":
-		return "🔴 严重"
-	case "high":
-		return "🟠 高危"
-	case "medium":
-		return "🟡 中危"
-	case "low":
-		return "🔵 低危"
+	case "critical", "high", "medium", "low":
+		return tr(i18n.Key("notify.sev." + severity))
 	default:
 		return severity
 	}
 }
 
-// StatusLabel 把处置状态翻译成中文，用于状态变更消息。
+// StatusLabel 把处置状态翻译成通知语言，用于状态变更消息。未知状态原样回显。
 func StatusLabel(status string) string {
 	switch status {
-	case "pending":
-		return "待处理"
-	case "in_progress":
-		return "处理中"
-	case "confirmed":
-		return "已确认"
-	case "resolved":
-		return "已处理"
-	case "fixed":
-		return "已修复"
-	case "false_positive":
-		return "误报"
-	case "ignored":
-		return "忽略"
-	case "duplicate":
-		return "重复"
-	case "risk_accepted":
-		return "风险接受"
+	case "pending", "in_progress", "confirmed", "resolved", "fixed",
+		"false_positive", "ignored", "duplicate", "risk_accepted":
+		return tr(i18n.Key("notify.status." + status))
 	default:
 		return status
 	}
+}
+
+// tr 按进程级通知语言（环境变量 ARTEX_LANG）渲染一条文案。通知由后台
+// 协程生成、没有 HTTP 请求，所以没有 Accept-Language 可用。
+func tr(key i18n.Key, args ...any) string {
+	return i18n.T(i18n.NotifyLocale(), key, args...)
 }
 
 // AtLeast 判断 severity 是否达到 min 门槛。min 为空表示不设门槛，一律通过。

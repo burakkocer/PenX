@@ -69,7 +69,7 @@ func (c dingTalkChannel) Send(ctx context.Context, cfg map[string]any, m Message
 				"title":          title,
 				"text":           text,
 				"btnOrientation": "0",
-				"singleTitle":    "查看详情",
+				"singleTitle":    tr("notify.link.viewDetail"),
 				"singleURL":      m.Items[0].DetailURL,
 			},
 		}
