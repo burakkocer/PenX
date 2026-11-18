@@ -6,3 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile.local
     image: artex-tr:local
+    environment:
+      # Language of outgoing notifications (en | tr). UI language is chosen in the app.
+      ARTEX_LANG: ${ARTEX_LANG:-en}
