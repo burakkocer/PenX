@@ -1,3 +1,8 @@
+import type { MessageKey } from "@/lib/i18n";
+import { tg } from "@/lib/i18n/runtime";
+
+// `label` is the protocol token written into the message text (@[漏洞#1 ...]) and
+// parsed by the backend, so it must stay as-is. Use mentionKindLabel() for display.
 export const mentionKinds = [
   { kind: "finding", label: "漏洞", alias: "finding" },
   { kind: "asset", label: "资产", alias: "asset" },
@@ -9,6 +14,24 @@ export const mentionKinds = [
   { kind: "subdomain", label: "子域名", alias: "subdomain" },
   { kind: "service", label: "服务", alias: "service" },
 ] as const;
+
+const MENTION_KIND_LABEL_KEYS: Record<string, MessageKey> = {
+  finding: "shell.mention.finding",
+  asset: "shell.mention.asset",
+  company: "shell.mention.company",
+  endpoint: "shell.mention.endpoint",
+  ip: "shell.mention.ip",
+  app: "shell.mention.app",
+  root_domain: "shell.mention.domain",
+  subdomain: "shell.mention.subdomain",
+  service: "shell.mention.service",
+};
+
+/** Localized display name of a mention kind (UI only; not the protocol token). */
+export function mentionKindLabel(kind: string): string {
+  const key = MENTION_KIND_LABEL_KEYS[kind];
+  return key ? tg(key) : kind;
+}
 
 export type MentionKind = (typeof mentionKinds)[number]["kind"];
 export interface ChatMention {
@@ -30,14 +53,17 @@ export function activeMention(value: string, caret: number) {
 export function mentionSearch(query: string) {
   const text = query.trimStart().toLowerCase();
   for (const item of mentionKinds) {
-    for (const alias of [item.label.toLowerCase(), item.alias]) {
+    for (const alias of [item.label.toLowerCase(), mentionKindLabel(item.kind).toLowerCase(), item.alias]) {
       if (text === alias || text.startsWith(`${alias} `) || (/[^a-z]/.test(alias) && text.startsWith(alias))) {
         return { kind: item.kind, query: query.trimStart().slice(alias.length).trim(), categories: [] };
       }
     }
   }
   const categories = mentionKinds.filter(
-    (item) => item.label.toLowerCase().startsWith(text) || item.alias.startsWith(text),
+    (item) =>
+      item.label.toLowerCase().startsWith(text) ||
+      mentionKindLabel(item.kind).toLowerCase().startsWith(text) ||
+      item.alias.startsWith(text),
   );
   return { kind: "" as const, query: query.trim(), categories };
 }
@@ -51,11 +77,16 @@ export function mentionToken(item: ChatMention) {
   return `@[${kind}#${item.id} ${label}]`;
 }
 
+function mentionTokenKindLabel(tokenKind: string): string {
+  const entry = mentionKinds.find((item) => item.label === tokenKind);
+  return entry ? mentionKindLabel(entry.kind) : tokenKind;
+}
+
 export function selectedMentions(value: string) {
   return [...value.matchAll(/@\[(漏洞|资产|企业|接口|IP|应用|域名|子域名|服务)#([0-9]+)(?: ([^\]\r\n]*))?\]/g)].map(
     (match) => ({
       token: match[0],
-      label: `${match[1]} #${match[2]}${match[3] ? ` · ${match[3]}` : ""}`,
+      label: `${mentionTokenKindLabel(match[1])} #${match[2]}${match[3] ? ` · ${match[3]}` : ""}`,
       start: match.index,
     }),
   );

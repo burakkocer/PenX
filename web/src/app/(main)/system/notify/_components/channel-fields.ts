@@ -3,15 +3,22 @@
 // 与页面拆开是因为这一份是**数据**而不是视图：它描述每种渠道有哪些字段、
 // 各自该用什么控件，以及表单文本到配置值（JSON）的双向转换。
 // 单独放一个文件后，新增渠道只需要动这里，页面本身不必改。
-// 渠道类型的展示名与简介。放在前端是因为它只影响文案，后端不需要知道。
-export const KIND_LABEL: Record<string, string> = {
-  dingtalk: "钉钉",
-  feishu: "飞书",
-  wecom: "企业微信",
-  webhook: "通用 Webhook",
-  telegram: "Telegram",
-  email: "邮件",
-};
+import { tg } from "@/lib/i18n/runtime";
+
+// 渠道类型的展示名。放在前端是因为它只影响文案，后端不需要知道。
+// 以函数形式取值：文案依赖当前语言，不能在模块加载时固化。
+const KIND_LABEL_KEYS = {
+  dingtalk: "systemNotify.kind.dingtalk",
+  feishu: "systemNotify.kind.feishu",
+  wecom: "systemNotify.kind.wecom",
+  webhook: "systemNotify.kind.webhook",
+  telegram: "systemNotify.kind.telegram",
+  email: "systemNotify.kind.email",
+} as const;
+
+export function kindLabel(kind: string): string {
+  return kind in KIND_LABEL_KEYS ? tg(KIND_LABEL_KEYS[kind as keyof typeof KIND_LABEL_KEYS]) : kind;
+}
 
 // 各渠道的配置字段定义。
 //
@@ -20,7 +27,7 @@ export const KIND_LABEL: Record<string, string> = {
 // 唯一的耦合点是 secret_keys —— 哪些字段该渲染成密码框由后端给出，
 // 因为只有渠道实现自己清楚哪些值算凭据（企业微信的整个 Webhook 就是凭据，
 // 而钉钉的只是其中一个 secret）。新增渠道时这里少一个条目只会让表单变空白，
-// 不会静默出错（下面的 hasFields 会提示）。
+// 不会静默出错（页面会提示）。
 export type FieldKind = "text" | "password" | "number" | "select" | "textarea" | "switch" | "kv" | "list";
 export interface FieldDef {
   key: string;
@@ -30,97 +37,115 @@ export interface FieldDef {
   help?: string;
   options?: { value: string; label: string }[];
 }
-export const CHANNEL_FIELDS: Record<string, FieldDef[]> = {
-  dingtalk: [
-    {
-      key: "webhook",
-      label: "Webhook 地址",
-      kind: "text",
-      placeholder: "https://oapi.dingtalk.com/robot/send?access_token=...",
-    },
-    {
-      key: "secret",
-      label: "加签密钥",
-      kind: "password",
-      help: "机器人安全设置选「加签」时填写；选「自定义关键词」或未开启安全设置则留空",
-    },
-  ],
-  feishu: [
-    {
-      key: "webhook",
-      label: "Webhook 地址",
-      kind: "text",
-      placeholder: "https://open.feishu.cn/open-apis/bot/v2/hook/...",
-    },
-    { key: "secret", label: "签名校验密钥", kind: "password", help: "机器人开启「签名校验」时填写，否则留空" },
-  ],
-  wecom: [
-    {
-      key: "webhook",
-      label: "Webhook 地址",
-      kind: "text",
-      placeholder: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...",
-    },
-  ],
-  webhook: [
-    { key: "url", label: "目标 URL", kind: "text", placeholder: "https://your-endpoint.example.com/hook" },
-    {
-      key: "method",
-      label: "请求方法",
-      kind: "select",
-      options: [
-        { value: "POST", label: "POST（带请求体）" },
-        { value: "PUT", label: "PUT（带请求体）" },
-        { value: "PATCH", label: "PATCH（带请求体）" },
-        { value: "GET", label: "GET（不带请求体）" },
-      ],
-    },
-    { key: "headers", label: "自定义请求头", kind: "kv", help: "每行 KEY=VALUE，例如 Authorization=Bearer xxx" },
-    {
-      key: "body_template",
-      label: "请求体模板",
-      kind: "textarea",
-      help:
-        "留空用内置默认模板。变量：{{.Title}} {{.Batch}} {{.Count}} {{.HomeURL}} {{.SentAt}}，" +
-        "以及 range .Items 下的 .Name/.VulnClass/.Severity/.Summary/.Assets/.DetailURL/.StatusLabel。" +
-        "插入字符串请用 {{json .Xxx}} 而不是 {{.Xxx}}，否则标题里的引号会破坏 JSON。",
-    },
-  ],
-  telegram: [
-    { key: "bot_token", label: "Bot Token", kind: "password", placeholder: "123456:ABC-DEF..." },
-    { key: "chat_id", label: "Chat ID", kind: "text", placeholder: "-1001234567890" },
-    {
-      key: "base_url",
-      label: "API 地址",
-      kind: "text",
-      placeholder: "https://api.telegram.org",
-      help: "留空用官方地址；自建 Bot API 反代时填写",
-    },
-  ],
-  email: [
-    { key: "host", label: "SMTP 服务器", kind: "text", placeholder: "smtp.example.com" },
-    {
-      key: "port",
-      label: "端口",
-      kind: "number",
-      placeholder: "587",
-      help: "587 走 STARTTLS；465 请把「隐式 TLS」打开",
-    },
-    { key: "username", label: "账号", kind: "text" },
-    { key: "password", label: "密码 / 授权码", kind: "password" },
-    { key: "from", label: "发件人", kind: "text", placeholder: "artex@example.com" },
-    { key: "to", label: "收件人", kind: "list", help: "多个地址用逗号分隔" },
-    { key: "tls", label: "隐式 TLS", kind: "switch", help: "465 端口打开；587 保持关闭（会自动 STARTTLS）" },
-  ],
-};
 
-export const SEVERITY_OPTIONS = [
-  { value: "", label: "不限" },
-  { value: "low", label: "低危及以上" },
-  { value: "medium", label: "中危及以上" },
-  { value: "high", label: "高危及以上" },
-  { value: "critical", label: "仅严重" },
-];
+// 在渲染期调用（文案随语言变化），不要缓存到模块级。
+export function getChannelFields(): Record<string, FieldDef[]> {
+  return {
+    dingtalk: [
+      {
+        key: "webhook",
+        label: tg("systemNotify.field.webhookUrl"),
+        kind: "text",
+        placeholder: "https://oapi.dingtalk.com/robot/send?access_token=...",
+      },
+      {
+        key: "secret",
+        label: tg("systemNotify.field.signSecret"),
+        kind: "password",
+        help: tg("systemNotify.field.signSecretHelp"),
+      },
+    ],
+    feishu: [
+      {
+        key: "webhook",
+        label: tg("systemNotify.field.webhookUrl"),
+        kind: "text",
+        placeholder: "https://open.feishu.cn/open-apis/bot/v2/hook/...",
+      },
+      {
+        key: "secret",
+        label: tg("systemNotify.field.feishuSecret"),
+        kind: "password",
+        help: tg("systemNotify.field.feishuSecretHelp"),
+      },
+    ],
+    wecom: [
+      {
+        key: "webhook",
+        label: tg("systemNotify.field.webhookUrl"),
+        kind: "text",
+        placeholder: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...",
+      },
+    ],
+    webhook: [
+      {
+        key: "url",
+        label: tg("systemNotify.field.targetUrl"),
+        kind: "text",
+        placeholder: "https://your-endpoint.example.com/hook",
+      },
+      {
+        key: "method",
+        label: tg("systemNotify.field.method"),
+        kind: "select",
+        options: [
+          { value: "POST", label: tg("systemNotify.field.methodWithBody", { method: "POST" }) },
+          { value: "PUT", label: tg("systemNotify.field.methodWithBody", { method: "PUT" }) },
+          { value: "PATCH", label: tg("systemNotify.field.methodWithBody", { method: "PATCH" }) },
+          { value: "GET", label: tg("systemNotify.field.methodNoBody", { method: "GET" }) },
+        ],
+      },
+      {
+        key: "headers",
+        label: tg("systemNotify.field.headers"),
+        kind: "kv",
+        help: tg("systemNotify.field.headersHelp"),
+      },
+      {
+        key: "body_template",
+        label: tg("systemNotify.field.bodyTemplate"),
+        kind: "textarea",
+        help: tg("systemNotify.field.bodyTemplateHelp"),
+      },
+    ],
+    telegram: [
+      { key: "bot_token", label: "Bot Token", kind: "password", placeholder: "123456:ABC-DEF..." },
+      { key: "chat_id", label: "Chat ID", kind: "text", placeholder: "-1001234567890" },
+      {
+        key: "base_url",
+        label: tg("systemNotify.field.apiUrl"),
+        kind: "text",
+        placeholder: "https://api.telegram.org",
+        help: tg("systemNotify.field.apiUrlHelp"),
+      },
+    ],
+    email: [
+      { key: "host", label: tg("systemNotify.field.smtpHost"), kind: "text", placeholder: "smtp.example.com" },
+      {
+        key: "port",
+        label: tg("systemNotify.field.port"),
+        kind: "number",
+        placeholder: "587",
+        help: tg("systemNotify.field.portHelp"),
+      },
+      { key: "username", label: tg("systemNotify.field.username"), kind: "text" },
+      { key: "password", label: tg("systemNotify.field.password"), kind: "password" },
+      { key: "from", label: tg("systemNotify.field.from"), kind: "text", placeholder: "artex@example.com" },
+      { key: "to", label: tg("systemNotify.field.to"), kind: "list", help: tg("systemNotify.field.toHelp") },
+      { key: "tls", label: tg("systemNotify.field.tls"), kind: "switch", help: tg("systemNotify.field.tlsHelp") },
+    ],
+  };
+}
+
+export function getSeverityOptions(): { value: string; label: string }[] {
+  return [
+    { value: "", label: tg("systemNotify.sev.any") },
+    { value: "low", label: tg("systemNotify.sev.low") },
+    { value: "medium", label: tg("systemNotify.sev.medium") },
+    { value: "high", label: tg("systemNotify.sev.high") },
+    { value: "critical", label: tg("systemNotify.sev.critical") },
+  ];
+}
 
 export type ChannelForm = {
   name: string;

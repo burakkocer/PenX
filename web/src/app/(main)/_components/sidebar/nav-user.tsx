@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
+import { useTranslations } from "@/hooks/use-translations";
 import { auth } from "@/lib/auth";
 import { getInitials } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ export function NavUser({
     readonly avatar: string;
   };
 }) {
+  const t = useTranslations();
   const { isMobile } = useSidebar();
   const [pwOpen, setPwOpen] = React.useState(false);
 
@@ -79,12 +81,12 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setPwOpen(true)}>
               <KeyRound />
-              修改密码
+              {t("shell.account.changePassword")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut />
-              退出登录
+              {t("shell.account.logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

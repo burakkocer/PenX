@@ -1,4 +1,13 @@
 import type en from "./en";
+import { tr as statusTr } from "./ns/status";
+import { tr as tasksListTr } from "./ns/tasksList";
+import { tr as taskDetailTr } from "./ns/taskDetail";
+import { tr as findingsTr } from "./ns/findings";
+import { tr as assetsFlowTr } from "./ns/assetsFlow";
+import { tr as systemAgentsTr } from "./ns/systemAgents";
+import { tr as systemInterceptTr } from "./ns/systemIntercept";
+import { tr as systemNotifyTr } from "./ns/systemNotify";
+import { tr as shellTr } from "./ns/shell";
 
 /**
  * Turkish message catalog.
@@ -8,6 +17,64 @@ import type en from "./en";
  * a Turkish user.
  */
 const tr: Record<keyof typeof en, string> = {
+  // Shared generic words — reuse these instead of adding per-page duplicates.
+  "common.save": "Kaydet",
+  "common.cancel": "İptal",
+  "common.delete": "Sil",
+  "common.edit": "Düzenle",
+  "common.create": "Oluştur",
+  "common.confirm": "Onayla",
+  "common.close": "Kapat",
+  "common.search": "Ara",
+  "common.loading": "Yükleniyor...",
+  "common.retry": "Yeniden dene",
+  "common.refresh": "Yenile",
+  "common.back": "Geri",
+  "common.next": "Sonraki",
+  "common.previous": "Önceki",
+  "common.yes": "Evet",
+  "common.no": "Hayır",
+  "common.enabled": "Etkin",
+  "common.disabled": "Devre dışı",
+  "common.name": "Ad",
+  "common.description": "Açıklama",
+  "common.status": "Durum",
+  "common.actions": "İşlemler",
+  "common.none": "Yok",
+  "common.all": "Tümü",
+  "common.copy": "Kopyala",
+  "common.copied": "Kopyalandı",
+  "common.add": "Ekle",
+  "common.remove": "Kaldır",
+  "common.test": "Test et",
+  "common.details": "Ayrıntılar",
+  "common.unknown": "Bilinmiyor",
+  "common.empty": "Veri yok",
+  "common.saved": "Kaydedildi",
+  "common.saveFailed": "Kaydetme başarısız",
+  "common.deleted": "Silindi",
+  "common.loadFailed": "Yüklenemedi",
+  "common.operationFailed": "İşlem başarısız",
+  "common.export": "Dışa aktar",
+  "common.import": "İçe aktar",
+  "common.reset": "Sıfırla",
+  "common.apply": "Uygula",
+  "common.submit": "Gönder",
+  "common.optional": "İsteğe bağlı",
+  "common.required": "Zorunlu",
+  "common.type": "Tür",
+  "common.time": "Zaman",
+  "common.createdAt": "Oluşturulma",
+  "common.updatedAt": "Güncellenme",
+  "common.target": "Hedef",
+  "common.severity": "Önem derecesi",
+  "common.total": "Toplam",
+  "common.page": "Sayfa",
+  "common.perPage": "Sayfa başına",
+  "common.start": "Başlat",
+  "common.stop": "Durdur",
+  "common.pause": "Duraklat",
+  "common.resume": "Sürdür",
   // Sidebar navigation — group labels
   "nav.group.functions": "İşlevler",
   "nav.group.system": "Sistem",
@@ -124,6 +191,15 @@ const tr: Record<keyof typeof en, string> = {
   "settings.language.title": "Dil",
   "settings.language.description": "Arayüz dilini seçin. Değişiklik hemen uygulanır ve bu cihazda hatırlanır.",
   "settings.language.label": "Arayüz dili",
+  ...statusTr,
+  ...tasksListTr,
+  ...taskDetailTr,
+  ...findingsTr,
+  ...assetsFlowTr,
+  ...systemAgentsTr,
+  ...systemInterceptTr,
+  ...systemNotifyTr,
+  ...shellTr,
 };
 
 export default tr;

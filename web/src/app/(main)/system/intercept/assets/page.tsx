@@ -16,26 +16,39 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslations } from "@/hooks/use-translations";
 import { api } from "@/lib/api";
+import { tg } from "@/lib/i18n/runtime";
 import type { AssetInterceptKind, AssetInterceptRule } from "@/lib/types";
 
 // ---- kind 元信息 ----
 
-const KIND_OPTIONS: { value: AssetInterceptKind; label: string; group: string; placeholder: string }[] = [
-  { value: "exact_domain", label: "域名（全等）", group: "全等匹配", placeholder: "example.gov.cn" },
-  { value: "exact_ip", label: "IP（全等）", group: "全等匹配", placeholder: "203.0.113.10" },
-  { value: "exact_url", label: "URL（全等）", group: "全等匹配", placeholder: "https://example.gov.cn/login" },
-  { value: "fuzzy_domain", label: "域名（模糊）", group: "模糊匹配", placeholder: ".gov.cn" },
-  { value: "fuzzy_ip", label: "IP（模糊）", group: "模糊匹配", placeholder: "203.0.113." },
-  { value: "fuzzy_url", label: "URL（模糊）", group: "模糊匹配", placeholder: "/admin" },
-  { value: "cidr", label: "CIDR 网段", group: "网段", placeholder: "192.168.0.0/16" },
+type KindGroup = "exact" | "fuzzy" | "cidr";
+
+// Built at render time (not module load) so labels follow the active language.
+const kindOptions = (): { value: AssetInterceptKind; label: string; group: KindGroup; placeholder: string }[] => [
+  {
+    value: "exact_domain",
+    label: tg("systemIntercept.kind.exactDomain"),
+    group: "exact",
+    placeholder: "example.gov.cn",
+  },
+  { value: "exact_ip", label: tg("systemIntercept.kind.exactIp"), group: "exact", placeholder: "203.0.113.10" },
+  {
+    value: "exact_url",
+    label: tg("systemIntercept.kind.exactUrl"),
+    group: "exact",
+    placeholder: "https://example.gov.cn/login",
+  },
+  { value: "fuzzy_domain", label: tg("systemIntercept.kind.fuzzyDomain"), group: "fuzzy", placeholder: ".gov.cn" },
+  { value: "fuzzy_ip", label: tg("systemIntercept.kind.fuzzyIp"), group: "fuzzy", placeholder: "203.0.113." },
+  { value: "fuzzy_url", label: tg("systemIntercept.kind.fuzzyUrl"), group: "fuzzy", placeholder: "/admin" },
+  { value: "cidr", label: tg("systemIntercept.kind.cidr"), group: "cidr", placeholder: "192.168.0.0/16" },
 ];
 
-const KIND_LABEL: Record<AssetInterceptKind, string> = Object.fromEntries(
-  KIND_OPTIONS.map((o) => [o.value, o.label]),
-) as Record<AssetInterceptKind, string>;
+const KIND_GROUPS: KindGroup[] = ["exact", "fuzzy", "cidr"];
 
-const KIND_GROUPS = ["全等匹配", "模糊匹配", "网段"];
+const kindGroupLabel = (g: KindGroup): string => tg(`systemIntercept.kindGroup.${g}`);
 
 function KindBadge({ kind }: { kind: AssetInterceptKind }) {
   const fuzzy = kind.startsWith("fuzzy_");
@@ -51,7 +64,7 @@ function KindBadge({ kind }: { kind: AssetInterceptKind }) {
             : "border-emerald-400 text-emerald-600"
       }
     >
-      {KIND_LABEL[kind]}
+      {kindOptions().find((o) => o.value === kind)?.label ?? kind}
     </Badge>
   );
 }
@@ -80,9 +93,9 @@ const defaultForm = (): RuleForm => ({ enabled: true, kind: "fuzzy_domain", patt
 // 前端轻校验（与后端一致：仅 exact_ip / cidr 做格式校验，其余交后端）。
 function frontValidate(form: RuleForm): string | null {
   const p = form.pattern.trim();
-  if (!p) return "匹配内容不能为空";
+  if (!p) return tg("systemIntercept.assets.patternRequired");
   if (form.kind === "cidr" && !/^[0-9a-fA-F:.]+\/\d{1,3}$/.test(p)) {
-    return "CIDR 格式无效，形如 192.168.0.0/16";
+    return tg("systemIntercept.assets.cidrInvalid");
   }
   return null;
 }
@@ -90,6 +103,7 @@ function frontValidate(form: RuleForm): string | null {
 // ---- page ----
 
 export default function AssetInterceptPage() {
+  const t = useTranslations();
   const [rules, setRules] = React.useState<AssetInterceptRule[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [open, setOpen] = React.useState(false);
@@ -101,11 +115,11 @@ export default function AssetInterceptPage() {
     try {
       setRules(await api.assetInterceptRules());
     } catch {
-      toast.error("加载资产拦截规则失败");
+      toast.error(t("systemIntercept.assets.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     load();
@@ -138,10 +152,10 @@ export default function AssetInterceptPage() {
     try {
       if (editing) {
         await api.updateAssetInterceptRule(editing.id, payload);
-        toast.success("规则已更新");
+        toast.success(t("systemIntercept.rules.updated"));
       } else {
         await api.createAssetInterceptRule(payload);
-        toast.success("规则已创建");
+        toast.success(t("systemIntercept.rules.created"));
       }
       setOpen(false);
       load();
@@ -153,10 +167,10 @@ export default function AssetInterceptPage() {
   }
 
   async function handleDelete(rule: AssetInterceptRule) {
-    if (!window.confirm(`确定删除资产拦截规则「${rule.pattern}」？`)) return;
+    if (!window.confirm(t("systemIntercept.assets.confirmDelete", { pattern: rule.pattern }))) return;
     try {
       await api.deleteAssetInterceptRule(rule.id);
-      toast.success("规则已删除");
+      toast.success(t("systemIntercept.rules.deleted"));
       load();
     } catch (e) {
       toast.error((e as Error).message);
@@ -172,7 +186,7 @@ export default function AssetInterceptPage() {
     }
   }
 
-  const placeholder = KIND_OPTIONS.find((o) => o.value === form.kind)?.placeholder ?? "";
+  const placeholder = kindOptions().find((o) => o.value === form.kind)?.placeholder ?? "";
 
   return (
     <div className="flex flex-1 flex-col gap-5 p-6">
@@ -180,45 +194,40 @@ export default function AssetInterceptPage() {
       <div className="flex items-center gap-2.5">
         <BanIcon className="h-5 w-5 shrink-0" />
         <div>
-          <h1 className="text-lg font-semibold leading-tight">资产拦截</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            全局资产黑名单：命中的域名 / IP / URL / 网段将被拦截，不对其执行任何操作
-          </p>
+          <h1 className="text-lg font-semibold leading-tight">{t("systemIntercept.assets.title")}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{t("systemIntercept.assets.subtitle")}</p>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
-          支持全等与模糊匹配的域名 / IP / URL，以及 CIDR 网段；默认内置模糊拦截政府（.gov / .gov.cn）与教育（.edu /
-          .edu.cn）网站
-        </p>
+        <p className="text-xs text-muted-foreground">{t("systemIntercept.assets.hint")}</p>
         <Button onClick={openNew} size="sm" className="shrink-0">
           <PlusIcon className="h-4 w-4" />
-          新建规则
+          {t("systemIntercept.assets.new")}
         </Button>
       </div>
 
       <Card>
         <CardContent className="p-0">
           {loading ? (
-            <p className="p-6 text-sm text-muted-foreground">加载中…</p>
+            <p className="p-6 text-sm text-muted-foreground">{t("common.loading")}</p>
           ) : rules.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
               <BanIcon className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">暂无资产拦截规则</p>
+              <p className="text-sm text-muted-foreground">{t("systemIntercept.assets.empty")}</p>
               <Button size="sm" variant="outline" onClick={openNew}>
                 <PlusIcon className="h-4 w-4" />
-                新建第一条规则
+                {t("systemIntercept.assets.newFirst")}
               </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[130px]">类型</TableHead>
-                  <TableHead>匹配内容</TableHead>
-                  <TableHead>备注</TableHead>
-                  <TableHead className="w-[64px] text-center">启用</TableHead>
+                  <TableHead className="w-[130px]">{t("common.type")}</TableHead>
+                  <TableHead>{t("systemIntercept.assets.colMatch")}</TableHead>
+                  <TableHead>{t("systemIntercept.assets.colNote")}</TableHead>
+                  <TableHead className="w-[64px] text-center">{t("common.enabled")}</TableHead>
                   <TableHead className="w-[80px]" />
                 </TableRow>
               </TableHeader>
@@ -237,7 +246,7 @@ export default function AssetInterceptPage() {
                       <div className="flex items-center gap-1.5">
                         {rule.builtin && (
                           <Badge variant="secondary" className="shrink-0 px-1 py-0 text-[10px]">
-                            内置
+                            {t("systemIntercept.assets.builtin")}
                           </Badge>
                         )}
                         <span className="truncate">{rule.note}</span>
@@ -273,12 +282,14 @@ export default function AssetInterceptPage() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="flex flex-col gap-0 p-0 sm:max-w-md">
           <SheetHeader className="border-b px-6 py-4">
-            <SheetTitle>{editing ? "编辑资产拦截规则" : "新建资产拦截规则"}</SheetTitle>
-            <SheetDescription className="text-xs">命中此规则的目标资产会被全局拦截</SheetDescription>
+            <SheetTitle>
+              {editing ? t("systemIntercept.assets.sheetEdit") : t("systemIntercept.assets.sheetNew")}
+            </SheetTitle>
+            <SheetDescription className="text-xs">{t("systemIntercept.assets.sheetDesc")}</SheetDescription>
           </SheetHeader>
 
           <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-5">
-            <Field label="匹配类型">
+            <Field label={t("systemIntercept.assets.matchType")}>
               <Select value={form.kind} onValueChange={(v) => set({ kind: v as AssetInterceptKind })}>
                 <SelectTrigger>
                   <SelectValue />
@@ -287,13 +298,15 @@ export default function AssetInterceptPage() {
                   {KIND_GROUPS.map((g) => (
                     <React.Fragment key={g}>
                       <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        {g}
+                        {kindGroupLabel(g)}
                       </div>
-                      {KIND_OPTIONS.filter((o) => o.group === g).map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
+                      {kindOptions()
+                        .filter((o) => o.group === g)
+                        .map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
                     </React.Fragment>
                   ))}
                 </SelectContent>
@@ -301,13 +314,13 @@ export default function AssetInterceptPage() {
             </Field>
 
             <Field
-              label="匹配内容"
+              label={t("systemIntercept.assets.colMatch")}
               hint={
                 form.kind === "cidr"
-                  ? "CIDR 网段，形如 192.168.0.0/16"
+                  ? t("systemIntercept.assets.hintCidr")
                   : form.kind.startsWith("fuzzy_")
-                    ? "模糊匹配：目标包含此内容即命中"
-                    : "全等匹配：目标需与此内容完全一致"
+                    ? t("systemIntercept.assets.hintFuzzy")
+                    : t("systemIntercept.assets.hintExact")
               }
             >
               <Input
@@ -317,9 +330,9 @@ export default function AssetInterceptPage() {
               />
             </Field>
 
-            <Field label="备注（可选）">
+            <Field label={t("systemIntercept.assets.noteOptional")}>
               <Textarea
-                placeholder="说明这条规则的用途"
+                placeholder={t("systemIntercept.assets.notePlaceholder")}
                 value={form.note}
                 onChange={(e) => set({ note: e.target.value })}
                 rows={2}
@@ -332,17 +345,17 @@ export default function AssetInterceptPage() {
             <div className="flex items-center gap-3">
               <Switch id="asset-rule-enabled" checked={form.enabled} onCheckedChange={(v) => set({ enabled: v })} />
               <Label htmlFor="asset-rule-enabled" className="cursor-pointer">
-                启用此规则
+                {t("systemIntercept.assets.enableThis")}
               </Label>
             </div>
           </div>
 
           <SheetFooter className="border-t px-6 py-4 flex-row justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>
-              取消
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "保存中…" : "保存"}
+              {saving ? t("systemIntercept.saving") : t("common.save")}
             </Button>
           </SheetFooter>
         </SheetContent>

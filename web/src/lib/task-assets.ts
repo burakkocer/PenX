@@ -1,29 +1,32 @@
+import type { MessageKey } from "@/lib/i18n";
+import { tg } from "@/lib/i18n/runtime";
 import type { NewAssetType } from "@/lib/types";
 
-const ASSET_TYPE_LABELS: Record<NewAssetType, string> = {
-  app: "应用",
-  endpoint: "接口",
-  ip: "IP",
-  root_domain: "根域名",
-  service: "服务",
-  subdomain: "子域名",
+const ASSET_TYPE_LABELS: Record<NewAssetType, MessageKey> = {
+  app: "assetsFlow.assetType.app",
+  endpoint: "assetsFlow.assetType.endpoint",
+  ip: "assetsFlow.assetType.ip",
+  root_domain: "assetsFlow.assetType.rootDomain",
+  service: "assetsFlow.assetType.service",
+  subdomain: "assetsFlow.assetType.subdomain",
 };
 
-const TASK_ASSET_SOURCE_LABELS: Record<string, string> = {
-  agent: "Agent 发现",
-  anchor: "黑板锚点",
-  api: "资产 API",
-  company: "企业关联",
-  legacy: "历史关联",
-  manual: "人工加入",
-  system: "系统关联",
-  task: "任务初始化",
+const TASK_ASSET_SOURCE_LABELS: Record<string, MessageKey> = {
+  agent: "assetsFlow.taskSource.agent",
+  anchor: "assetsFlow.taskSource.anchor",
+  api: "assetsFlow.taskSource.api",
+  company: "assetsFlow.taskSource.company",
+  legacy: "assetsFlow.taskSource.legacy",
+  manual: "assetsFlow.taskSource.manual",
+  system: "assetsFlow.taskSource.system",
+  task: "assetsFlow.taskSource.task",
 };
 
 export function taskAssetTypeLabel(type: NewAssetType): string {
-  return ASSET_TYPE_LABELS[type];
+  return tg(ASSET_TYPE_LABELS[type]);
 }
 
 export function taskAssetSourceLabel(source: string): string {
-  return TASK_ASSET_SOURCE_LABELS[source] ?? source;
+  const key = TASK_ASSET_SOURCE_LABELS[source];
+  return key ? tg(key) : source;
 }

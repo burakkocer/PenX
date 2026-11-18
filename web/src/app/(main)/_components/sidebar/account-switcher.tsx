@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTranslations } from "@/hooks/use-translations";
 import { auth } from "@/lib/auth";
 import { cn, getInitials } from "@/lib/utils";
 
@@ -28,6 +29,7 @@ export function AccountSwitcher({
     readonly role: string;
   }>;
 }) {
+  const t = useTranslations();
   const [activeUser, setActiveUser] = useState(users[0]);
   const [pwOpen, setPwOpen] = useState(false);
 
@@ -80,11 +82,11 @@ export function AccountSwitcher({
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setPwOpen(true)}>
             <KeyRound />
-            修改密码
+            {t("shell.account.changePassword")}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
             <LogOut />
-            退出登录
+            {t("shell.account.logout")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

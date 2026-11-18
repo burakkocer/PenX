@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { tg } from "@/lib/i18n/runtime";
 import { getLocalStorageValue, setLocalStorageValue } from "@/lib/local-storage.client";
 
 // 会话输入框的发送/换行键位。纯前端偏好：只落 localStorage，不入库、不随账号同步，
@@ -12,9 +13,20 @@ export type ChatSendMode = "enter" | "ctrl-enter";
 export const CHAT_SEND_MODE_KEY = "artex_chat_send_mode";
 export const DEFAULT_CHAT_SEND_MODE: ChatSendMode = "enter";
 
-export const CHAT_SEND_MODE_OPTIONS: { value: ChatSendMode; label: string }[] = [
-  { value: "enter", label: "Enter 发送，Shift+Enter 换行" },
-  { value: "ctrl-enter", label: "Ctrl+Enter 发送，Enter 换行" },
+// `label` is a getter so it resolves in the active language at render time.
+export const CHAT_SEND_MODE_OPTIONS: { value: ChatSendMode; readonly label: string }[] = [
+  {
+    value: "enter",
+    get label() {
+      return tg("shell.sendMode.enter");
+    },
+  },
+  {
+    value: "ctrl-enter",
+    get label() {
+      return tg("shell.sendMode.ctrlEnter");
+    },
+  },
 ];
 
 function parseMode(raw: string | null): ChatSendMode {

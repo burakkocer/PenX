@@ -6,6 +6,7 @@ import { type StoreApi, useStore } from "zustand";
 
 import { type FontKey, fontRegistry } from "@/lib/fonts/registry";
 import { SUPPORTED_LOCALES } from "@/lib/i18n/locales";
+import { setActiveLocale } from "@/lib/i18n/runtime";
 import {
   CONTENT_LAYOUT_VALUES,
   NAVBAR_STYLE_VALUES,
@@ -105,8 +106,19 @@ export const PreferencesStoreProvider = ({
     const startMode = domSnapshotRef.current?.themeMode ?? store.getState().themeMode;
     applyFromMode(startMode);
 
+    // Keep the non-React locale (lib/i18n/runtime.ts) and <html lang> in sync
+    // with the store, including on runtime language switches.
+    const applyLocale = (next: PreferencesState["locale"]) => {
+      setActiveLocale(next);
+      const root = document.documentElement;
+      root.setAttribute("lang", next);
+      root.setAttribute("data-locale", next);
+    };
+    applyLocale(store.getState().locale);
+
     const unsubscribeStore = store.subscribe((s, p) => {
       if (s.themeMode !== p.themeMode) applyFromMode(s.themeMode);
+      if (s.locale !== p.locale) applyLocale(s.locale);
     });
 
     return () => {

@@ -9,7 +9,75 @@
  * setup), and the language setting itself. Most in-app page content is not
  * covered yet — see README.md for status.
  */
+import { en as statusEn } from "./ns/status";
+import { en as tasksListEn } from "./ns/tasksList";
+import { en as taskDetailEn } from "./ns/taskDetail";
+import { en as findingsEn } from "./ns/findings";
+import { en as assetsFlowEn } from "./ns/assetsFlow";
+import { en as systemAgentsEn } from "./ns/systemAgents";
+import { en as systemInterceptEn } from "./ns/systemIntercept";
+import { en as systemNotifyEn } from "./ns/systemNotify";
+import { en as shellEn } from "./ns/shell";
+
 const en = {
+  // Shared generic words — reuse these instead of adding per-page duplicates.
+  "common.save": "Save",
+  "common.cancel": "Cancel",
+  "common.delete": "Delete",
+  "common.edit": "Edit",
+  "common.create": "Create",
+  "common.confirm": "Confirm",
+  "common.close": "Close",
+  "common.search": "Search",
+  "common.loading": "Loading...",
+  "common.retry": "Retry",
+  "common.refresh": "Refresh",
+  "common.back": "Back",
+  "common.next": "Next",
+  "common.previous": "Previous",
+  "common.yes": "Yes",
+  "common.no": "No",
+  "common.enabled": "Enabled",
+  "common.disabled": "Disabled",
+  "common.name": "Name",
+  "common.description": "Description",
+  "common.status": "Status",
+  "common.actions": "Actions",
+  "common.none": "None",
+  "common.all": "All",
+  "common.copy": "Copy",
+  "common.copied": "Copied",
+  "common.add": "Add",
+  "common.remove": "Remove",
+  "common.test": "Test",
+  "common.details": "Details",
+  "common.unknown": "Unknown",
+  "common.empty": "No data",
+  "common.saved": "Saved",
+  "common.saveFailed": "Save failed",
+  "common.deleted": "Deleted",
+  "common.loadFailed": "Failed to load",
+  "common.operationFailed": "Operation failed",
+  "common.export": "Export",
+  "common.import": "Import",
+  "common.reset": "Reset",
+  "common.apply": "Apply",
+  "common.submit": "Submit",
+  "common.optional": "Optional",
+  "common.required": "Required",
+  "common.type": "Type",
+  "common.time": "Time",
+  "common.createdAt": "Created at",
+  "common.updatedAt": "Updated at",
+  "common.target": "Target",
+  "common.severity": "Severity",
+  "common.total": "Total",
+  "common.page": "Page",
+  "common.perPage": "Per page",
+  "common.start": "Start",
+  "common.stop": "Stop",
+  "common.pause": "Pause",
+  "common.resume": "Resume",
   // Sidebar navigation — group labels
   "nav.group.functions": "Functions",
   "nav.group.system": "System",
@@ -127,6 +195,15 @@ const en = {
   "settings.language.description":
     "Choose the display language for the interface. Applies immediately and is remembered on this device.",
   "settings.language.label": "Interface language",
+  ...statusEn,
+  ...tasksListEn,
+  ...taskDetailEn,
+  ...findingsEn,
+  ...assetsFlowEn,
+  ...systemAgentsEn,
+  ...systemInterceptEn,
+  ...systemNotifyEn,
+  ...shellEn,
 } satisfies Record<string, string>;
 
 export default en;

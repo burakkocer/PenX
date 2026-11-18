@@ -5,182 +5,184 @@ import * as React from "react";
 import { SearchIcon } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { useTranslations } from "@/hooks/use-translations";
+import type { MessageKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 // ── DSL autocomplete ──────────────────────────────────────────────────────────
 // Shared by the global asset view (/function/assets) and the per-task 测试资产
 // search, so both search boxes behave and look identical.
 
-const DSL_FIELDS: { name: string; desc: string; ops: { op: string; desc: string }[] }[] = [
+const DSL_FIELDS: { name: string; desc: MessageKey; ops: { op: string; desc: MessageKey }[] }[] = [
   {
     name: "domain",
-    desc: "域名（根域名/子域名/服务域名）",
+    desc: "assetsFlow.dsl.field.domain",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "ip",
-    desc: "IPv4/IPv6 地址",
+    desc: "assetsFlow.dsl.field.ip",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "url",
-    desc: "完整 URL（服务/接口）",
+    desc: "assetsFlow.dsl.field.url",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "root_domain",
-    desc: "根域名",
+    desc: "assetsFlow.dsl.field.rootDomain",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "page_title",
-    desc: "页面标题（HTTP 服务）",
+    desc: "assetsFlow.dsl.field.pageTitle",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "icp",
-    desc: "ICP 备案号",
+    desc: "assetsFlow.dsl.field.icp",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "service_name",
-    desc: "服务名称（非 HTTP 服务）",
+    desc: "assetsFlow.dsl.field.serviceName",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "app_name",
-    desc: "应用名称",
+    desc: "assetsFlow.dsl.field.appName",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "bundle_id",
-    desc: "应用 Bundle ID",
+    desc: "assetsFlow.dsl.field.bundleId",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "category",
-    desc: "应用分类",
+    desc: "assetsFlow.dsl.field.category",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "app_icp",
-    desc: "应用 ICP 备案",
+    desc: "assetsFlow.dsl.field.appIcp",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "method",
-    desc: "HTTP 方法 GET/POST/PUT/…",
+    desc: "assetsFlow.dsl.field.method",
     ops: [
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "service_type",
-    desc: "服务类型：http | other",
+    desc: "assetsFlow.dsl.field.serviceType",
     ops: [
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "record_type",
-    desc: "DNS 解析类型 A/CNAME/MX/…",
+    desc: "assetsFlow.dsl.field.recordType",
     ops: [
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "technology",
-    desc: "技术指纹（数组字段）",
+    desc: "assetsFlow.dsl.field.technology",
     ops: [
-      { op: "=", desc: "模糊匹配" },
-      { op: "==", desc: "精确匹配" },
-      { op: "!=", desc: "排除" },
+      { op: "=", desc: "assetsFlow.dsl.opFuzzy" },
+      { op: "==", desc: "assetsFlow.dsl.opExact" },
+      { op: "!=", desc: "assetsFlow.dsl.opExclude" },
     ],
   },
   {
     name: "port",
-    desc: "端口号（整数）",
+    desc: "assetsFlow.dsl.field.port",
     ops: [
-      { op: "==", desc: "等于" },
-      { op: "!=", desc: "不等于" },
-      { op: ">", desc: "大于" },
-      { op: ">=", desc: "大于等于" },
-      { op: "<", desc: "小于" },
-      { op: "<=", desc: "小于等于" },
+      { op: "==", desc: "assetsFlow.dsl.opEq" },
+      { op: "!=", desc: "assetsFlow.dsl.opNe" },
+      { op: ">", desc: "assetsFlow.dsl.opGt" },
+      { op: ">=", desc: "assetsFlow.dsl.opGte" },
+      { op: "<", desc: "assetsFlow.dsl.opLt" },
+      { op: "<=", desc: "assetsFlow.dsl.opLte" },
     ],
   },
   {
     name: "status_code",
-    desc: "HTTP 状态码（整数）",
+    desc: "assetsFlow.dsl.field.statusCode",
     ops: [
-      { op: "==", desc: "等于" },
-      { op: "!=", desc: "不等于" },
-      { op: ">", desc: "大于" },
-      { op: ">=", desc: "大于等于" },
-      { op: "<", desc: "小于" },
-      { op: "<=", desc: "小于等于" },
+      { op: "==", desc: "assetsFlow.dsl.opEq" },
+      { op: "!=", desc: "assetsFlow.dsl.opNe" },
+      { op: ">", desc: "assetsFlow.dsl.opGt" },
+      { op: ">=", desc: "assetsFlow.dsl.opGte" },
+      { op: "<", desc: "assetsFlow.dsl.opLt" },
+      { op: "<=", desc: "assetsFlow.dsl.opLte" },
     ],
   },
-  { name: "company_id", desc: "归属企业 ID（整数）", ops: [{ op: "==", desc: "等于" }] },
-  { name: "task_id", desc: "来源任务 ID（整数）", ops: [{ op: "==", desc: "等于" }] },
+  { name: "company_id", desc: "assetsFlow.dsl.field.companyId", ops: [{ op: "==", desc: "assetsFlow.dsl.opEq" }] },
+  { name: "task_id", desc: "assetsFlow.dsl.field.taskId", ops: [{ op: "==", desc: "assetsFlow.dsl.opEq" }] },
 ];
 
-const LOGIC_OPS = [
-  { label: "AND", desc: "且（两个条件都满足）" },
-  { label: "OR", desc: "或（满足其中之一）" },
+const LOGIC_OPS: { label: string; desc: MessageKey }[] = [
+  { label: "AND", desc: "assetsFlow.dsl.and" },
+  { label: "OR", desc: "assetsFlow.dsl.or" },
 ];
 
 interface DslSuggestion {
   kind: "field" | "operator" | "logic";
   label: string;
-  desc: string;
+  desc: MessageKey;
   replaceStart: number;
   replaceEnd: number;
   insertText: string;
@@ -276,6 +278,7 @@ export function AssetDslSearch({
   error: string;
   count?: number;
 }) {
+  const t = useTranslations();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [suggestions, setSuggestions] = React.useState<DslSuggestion[]>([]);
   const [selIdx, setSelIdx] = React.useState(0);
@@ -341,7 +344,7 @@ export function AssetDslSearch({
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={inputRef}
-          placeholder="DSL 搜索：domain=example AND status_code>=400"
+          placeholder={t("assetsFlow.dsl.placeholder")}
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
@@ -367,7 +370,7 @@ export function AssetDslSearch({
                 }}
               >
                 <span className={cn("shrink-0 font-mono text-xs font-semibold", KIND_STYLE[s.kind])}>{s.label}</span>
-                <span className="text-xs text-muted-foreground">{s.desc}</span>
+                <span className="text-xs text-muted-foreground">{t(s.desc)}</span>
               </button>
             ))}
           </div>
@@ -375,7 +378,13 @@ export function AssetDslSearch({
       </div>
       {query.trim() && !open && (
         <p className="pl-1 text-[11px] text-muted-foreground">
-          {loading ? "搜索中…" : error ? <span className="text-destructive">{error}</span> : `找到 ${count ?? 0} 条`}
+          {loading ? (
+            t("assetsFlow.dsl.searching")
+          ) : error ? (
+            <span className="text-destructive">{error}</span>
+          ) : (
+            t("assetsFlow.dsl.found", { n: count ?? 0 })
+          )}
         </p>
       )}
     </div>

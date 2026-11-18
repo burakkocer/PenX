@@ -6,6 +6,7 @@
 import type { ChatMention } from "@/lib/chat-mentions";
 import { getClientCookie } from "@/lib/cookie.client";
 import { DEFAULT_LOCALE, isLocale, t } from "@/lib/i18n";
+import { tg } from "@/lib/i18n/runtime";
 import { MOCK } from "@/lib/mock/enabled";
 import { mockHandle } from "@/lib/mock/handler";
 import type {
@@ -113,6 +114,16 @@ function getToken(): string | null {
   return localStorage.getItem("artex_token");
 }
 
+/** Error carrying the HTTP status, so callers can branch on it instead of matching (localized) message text. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 // The in-app language switcher (see lib/i18n) does not always match the
 // browser's own Accept-Language, so we send the user's chosen UI locale
 // explicitly rather than relying on the browser default — the backend
@@ -155,7 +166,7 @@ export async function http<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // Keep the status-based fallback for empty or non-JSON error responses.
     }
-    throw new Error(message);
+    throw new ApiError(message, r.status);
   }
   if (r.status === 204) return undefined as T;
   return r.json();
@@ -462,7 +473,7 @@ export const api = {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: fd,
     });
-    if (!r.ok) throw new Error(`上传失败: ${r.status}`);
+    if (!r.ok) throw new Error(tg("shell.api.uploadFailed", { detail: String(r.status) }));
     return r.json() as Promise<{ uploaded: number }>;
   },
   workspaceDownload: async (path: string) => {
@@ -474,7 +485,7 @@ export const api = {
       const r = await fetch(`/api/workspace/download?path=${encodeURIComponent(path)}`, {
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
-      if (!r.ok) throw new Error(`下载失败: ${r.status}`);
+      if (!r.ok) throw new Error(tg("shell.api.downloadFailed", { detail: String(r.status) }));
       blob = await r.blob();
     }
     const objUrl = URL.createObjectURL(blob);
@@ -663,8 +674,8 @@ export const api = {
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     );
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: "下载失败" }));
-      throw new Error(error.error ?? "下载失败");
+      const error = await response.json().catch(() => ({ error: tg("shell.api.downloadFailedShort") }));
+      throw new Error(error.error ?? tg("shell.api.downloadFailedShort"));
     }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
@@ -912,7 +923,7 @@ export const api = {
       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: fd,
     });
-    if (!r.ok) throw new Error(`上传失败: ${r.status} ${await r.text()}`);
+    if (!r.ok) throw new Error(tg("shell.api.uploadFailed", { detail: `${r.status} ${await r.text()}` }));
     return r.json() as Promise<{ attachments: ChatAttachment[] }>;
   },
   stopChat: (taskId: string) => post<{ status: string }>(`/tasks/${taskId}/chat/stop`, {}),
@@ -1170,10 +1181,10 @@ export const api = {
     const r = await fetch(`/api/skills/upload${overwrite ? "?overwrite=true" : ""}`, {
       method: "POST",
       body: fd,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: { "Accept-Language": getUiLocale(), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     });
     const body = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(body?.error || `上传失败(${r.status})`);
+    if (!r.ok) throw new ApiError(body?.error || tg("shell.api.uploadFailed", { detail: String(r.status) }), r.status);
     return body;
   },
   deleteSkill: (name: string) => del<{ deleted: string }>(`/skills/${name}`),

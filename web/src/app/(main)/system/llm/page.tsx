@@ -26,7 +26,9 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTranslations } from "@/hooks/use-translations";
 import { api } from "@/lib/api";
+import { tg } from "@/lib/i18n/runtime";
 import type { LLMPoolMember, LLMPoolStatus, LLMProfile, LLMRetryOverride } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -39,25 +41,24 @@ import { ProfileRetryFields, RetryPolicyPanel, ZERO_OVERRIDE } from "./_componen
 const NONE = "none";
 const fromStore = (v?: string) => (v ? v : NONE);
 const toStore = (v: string) => (v === NONE ? "" : v);
-const THINKING_TYPES: { value: string; label: string }[] = [
-  { value: NONE, label: "不发送（默认）" },
-  { value: "disabled", label: "关闭" },
-  { value: "enabled", label: "开启" },
+const thinkingTypes = (): { value: string; label: string }[] => [
+  { value: NONE, label: tg("systemAgents.llm.notSentDefault") },
+  { value: "disabled", label: tg("systemAgents.llm.off") },
+  { value: "enabled", label: tg("systemAgents.llm.on") },
 ];
 // 输出上限用哪个请求字段名（仅 openai 格式有意义）。NONE ↔ "" 走同一套哨兵转换。
-const MAX_TOKENS_FIELDS: { value: string; label: string }[] = [
-  { value: NONE, label: "max_tokens（默认）" },
+const maxTokensFields = (): { value: string; label: string }[] => [
+  { value: NONE, label: tg("systemAgents.llm.maxTokensDefault", { field: "max_tokens" }) },
   { value: "max_completion_tokens", label: "max_completion_tokens" },
 ];
 // 另外两种格式各自定死了字段名，选项对它们无意义，说明文案里直接讲清楚。
-const MAX_TOKENS_FIELD_HINTS: Record<string, string> = {
-  openai:
-    "上限发哪个键。max_tokens 是默认，绝大多数兼容网关只认它；OpenAI 官方推理模型（o 系列 / GPT-5）反过来只认 max_completion_tokens，收到 max_tokens 会直接报 unsupported_parameter。",
-  anthropic: "仅 openai 格式可选。Anthropic 的字段名固定为 max_tokens。",
-  "openai-responses": "仅 openai 格式可选。Responses API 的字段名固定为 max_output_tokens。",
-};
-const EFFORT_LEVELS: { value: string; label: string }[] = [
-  { value: NONE, label: "不发送（默认）" },
+const maxTokensFieldHints = (): Record<string, string> => ({
+  openai: tg("systemAgents.llm.hintOpenai"),
+  anthropic: tg("systemAgents.llm.hintAnthropic"),
+  "openai-responses": tg("systemAgents.llm.hintResponses"),
+});
+const effortLevels = (): { value: string; label: string }[] => [
+  { value: NONE, label: tg("systemAgents.llm.notSentDefault") },
   { value: "low", label: "low" },
   { value: "medium", label: "medium" },
   { value: "high", label: "high" },
@@ -77,26 +78,29 @@ type Health = { label: string; cls: string; hint?: string };
 function healthOf(p: LLMProfile, m?: LLMPoolMember): Health {
   if (!p.api_key_hint) {
     return {
-      label: "未配置 Key",
+      label: tg("systemAgents.llm.keyNotSet"),
       cls: "border-muted-foreground/40 text-muted-foreground",
-      hint: "未填 API Key，无法调用",
+      hint: tg("systemAgents.llm.keyNotSetHint"),
     };
   }
   if (m?.state === "tripped") {
     return {
-      label: m.cooldown_secs > 0 ? `已熔断 · ${cooldownText(m.cooldown_secs)}` : "已熔断",
+      label:
+        m.cooldown_secs > 0
+          ? tg("systemAgents.llm.trippedCooldown", { time: cooldownText(m.cooldown_secs) })
+          : tg("systemAgents.llm.tripped"),
       cls: "border-destructive/50 text-destructive",
       hint: m.last_error,
     };
   }
   if (m?.state === "degraded") {
     return {
-      label: `异常 · 失败 ${m.fails} 次`,
+      label: tg("systemAgents.llm.degraded", { n: m.fails }),
       cls: "border-amber-500/50 text-amber-600 dark:text-amber-400",
       hint: m.last_error,
     };
   }
-  return { label: "正常", cls: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400" };
+  return { label: tg("systemAgents.llm.healthy"), cls: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400" };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,13 +118,14 @@ function PoolSheet({
   pool: LLMPoolStatus | null;
   onReload: () => Promise<void>;
 }) {
+  const t = useTranslations();
   const [busy, setBusy] = React.useState(false);
 
   // 冷却倒计时是后端算出的剩余秒数——抽屉开着且有配置不正常时才定时拉，让它走起来。
   React.useEffect(() => {
     if (!open || !pool?.enabled || !pool.chain.some((m) => m.state !== "ok")) return;
-    const t = setInterval(() => void onReload(), 10_000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => void onReload(), 10_000);
+    return () => clearInterval(timer);
   }, [open, pool, onReload]);
 
   async function toggle(patch: { llm_pool_enabled?: boolean; llm_pool_bind_fallback?: boolean }) {
@@ -130,12 +135,12 @@ function PoolSheet({
       await api.setSettings(patch);
       await onReload();
       if (patch.llm_pool_enabled !== undefined) {
-        toast.success(patch.llm_pool_enabled ? "已开启 LLM 轮询" : "已关闭 LLM 轮询");
+        toast.success(patch.llm_pool_enabled ? t("systemAgents.llm.poolOn") : t("systemAgents.llm.poolOff"));
       } else {
-        toast.success("已更新兜底设置");
+        toast.success(t("systemAgents.llm.fallbackUpdated"));
       }
     } catch (e) {
-      toast.error(`设置失败：${(e as Error).message}`);
+      toast.error(t("systemAgents.llm.settingFailed", { msg: (e as Error).message }));
     } finally {
       setBusy(false);
     }
@@ -145,9 +150,9 @@ function PoolSheet({
     try {
       await api.resetLLMPool(id);
       await onReload();
-      toast.success(id ? "已恢复该配置" : "已恢复全部配置");
+      toast.success(id ? t("systemAgents.llm.recoveredOne") : t("systemAgents.llm.recoveredAll"));
     } catch (e) {
-      toast.error(`恢复失败：${(e as Error).message}`);
+      toast.error(t("systemAgents.llm.recoverFailed", { msg: (e as Error).message }));
     }
   }
 
@@ -162,25 +167,22 @@ function PoolSheet({
       <SheetContent side="right" className="flex flex-col gap-0 p-0 data-[side=right]:sm:max-w-lg">
         <SheetHeader className="px-4">
           <SheetTitle className="flex items-center gap-2">
-            <ZapIcon className="size-4" /> LLM 轮询 · 故障转移
+            <ZapIcon className="size-4" /> {t("systemAgents.llm.poolTitle")}
           </SheetTitle>
-          <SheetDescription>
-            开启后，<b>未指定模型</b>的 Agent 在当前配置不可用（余额不足 / Key 失效 / 限流 /
-            服务异常）时自动切到下一个配置。
-          </SheetDescription>
+          <SheetDescription>{t("systemAgents.llm.poolDesc")}</SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-6">
           <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
             <div className="grid gap-0.5">
-              <Label className="text-sm">启用轮询</Label>
-              <p className="text-muted-foreground text-xs">默认关闭。关闭时始终只用激活配置，失败即失败。</p>
+              <Label className="text-sm">{t("systemAgents.llm.enablePool")}</Label>
+              <p className="text-muted-foreground text-xs">{t("systemAgents.llm.enablePoolHint")}</p>
             </div>
             <Switch
               checked={enabled}
               disabled={busy}
               onCheckedChange={(v) => void toggle({ llm_pool_enabled: v })}
-              aria-label="LLM 轮询开关"
+              aria-label={t("systemAgents.llm.poolSwitchAria")}
             />
           </div>
 
@@ -188,17 +190,14 @@ function PoolSheet({
             <>
               <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
                 <div className="grid gap-0.5">
-                  <Label className="text-sm">指定模型失败时也兜底</Label>
-                  <p className="text-muted-foreground text-xs">
-                    默认关闭：Agent 或任务指定了某个配置就只用它，失败即失败（不会悄悄换成别的模型）。
-                    开启后，指定的配置失败时也会回落到下面的轮询链。
-                  </p>
+                  <Label className="text-sm">{t("systemAgents.llm.bindFallback")}</Label>
+                  <p className="text-muted-foreground text-xs">{t("systemAgents.llm.bindFallbackHint")}</p>
                 </div>
                 <Switch
                   checked={pool?.bind_fallback ?? false}
                   disabled={busy}
                   onCheckedChange={(v) => void toggle({ llm_pool_bind_fallback: v })}
-                  aria-label="绑定配置失败兜底开关"
+                  aria-label={t("systemAgents.llm.bindFallbackAria")}
                 />
               </div>
 
@@ -206,16 +205,16 @@ function PoolSheet({
 
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm">轮询顺序</Label>
+                  <Label className="text-sm">{t("systemAgents.llm.poolOrder")}</Label>
                   {tripped.length > 0 && (
                     <Button size="sm" variant="ghost" onClick={() => void recover()}>
-                      <RotateCcwIcon /> 全部恢复
+                      <RotateCcwIcon /> {t("systemAgents.llm.recoverAllBtn")}
                     </Button>
                   )}
                 </div>
                 {inChain.length < 2 && (
                   <p className="text-muted-foreground text-xs">
-                    当前只有 {inChain.length} 个可用配置，轮询不会生效——至少需要 2 个已填 API Key 且参与轮询的配置。
+                    {t("systemAgents.llm.poolTooFew", { n: inChain.length })}
                   </p>
                 )}
                 {chain.map((m) => {
@@ -237,24 +236,28 @@ function PoolSheet({
                         <span className="font-medium">{m.name}</span>
                         {m.active && (
                           <Badge variant="outline" className="border-amber-400/50 text-amber-500">
-                            激活
+                            {t("systemAgents.llm.active")}
                           </Badge>
                         )}
-                        {excluded && <Badge variant="outline">不参与轮询</Badge>}
+                        {excluded && <Badge variant="outline">{t("systemAgents.llm.notInPool")}</Badge>}
                         <div className="ml-auto flex items-center gap-2">
                           {m.state === "tripped" && m.cooldown_secs > 0 && (
-                            <span className="text-muted-foreground text-xs">冷却 {cooldownText(m.cooldown_secs)}</span>
+                            <span className="text-muted-foreground text-xs">
+                              {t("systemAgents.llm.cooldown", { time: cooldownText(m.cooldown_secs) })}
+                            </span>
                           )}
                           {m.state === "degraded" && (
-                            <span className="text-muted-foreground text-xs">连续失败 {m.fails} 次</span>
+                            <span className="text-muted-foreground text-xs">
+                              {t("systemAgents.llm.consecutiveFails", { n: m.fails })}
+                            </span>
                           )}
                           {m.state !== "ok" && (
                             <Button
                               size="icon"
                               variant="ghost"
                               className="size-7"
-                              aria-label="立即恢复"
-                              title="立即恢复：清除熔断，下次调用重试该配置"
+                              aria-label={t("systemAgents.llm.recoverNow")}
+                              title={t("systemAgents.llm.recoverNowHint")}
                               onClick={() => void recover(m.profile_id)}
                             >
                               <RotateCcwIcon className="size-3.5" />
@@ -264,7 +267,7 @@ function PoolSheet({
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 pl-7 text-muted-foreground text-xs">
                         <code className="truncate font-mono">{m.model}</code>
-                        {!m.active && <span>优先级 {m.priority}</span>}
+                        {!m.active && <span>{t("systemAgents.llm.priorityN", { n: m.priority })}</span>}
                       </div>
                       {m.last_error && (
                         <p className="truncate pl-7 font-mono text-muted-foreground text-xs" title={m.last_error}>
@@ -276,15 +279,13 @@ function PoolSheet({
                 })}
                 {chain.length === 0 && (
                   <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground text-sm">
-                    暂无配置
+                    {t("systemAgents.llm.noProfilesShort")}
                   </div>
                 )}
               </div>
 
               <div className="rounded-lg border border-dashed p-3 text-muted-foreground text-xs leading-relaxed">
-                激活配置恒为第 1 顺位，其余按优先级从高到低（在各配置里设置）。某个配置失败后进入冷却 （60s → 5min →
-                30min），冷却期内被跳过，恢复后自动切回。上下文窗口装不下当前请求的配置会被跳过。 指定了模型的 Agent
-                与任务默认不参与轮询。
+                {t("systemAgents.llm.poolFooter")}
               </div>
             </>
           )}
@@ -309,6 +310,7 @@ function ProfileSheet({
   onOpenChange: (o: boolean) => void;
   onSaved: (id: string) => void;
 }) {
+  const t = useTranslations();
   const isNew = !profile;
   const [name, setName] = React.useState("");
   const [format, setFormat] = React.useState<"anthropic" | "openai" | "openai-responses">("anthropic");
@@ -373,12 +375,12 @@ function ProfileSheet({
       if (r.ok && r.models && r.models.length > 0) {
         setModels(r.models);
         setModelsOpen(true);
-        toast.success(`已加载 ${r.models.length} 个模型`);
+        toast.success(t("systemAgents.llm.modelsLoaded", { n: r.models.length }));
       } else {
-        toast.error(`加载模型失败：${r.error ?? "未获取到模型"}`);
+        toast.error(t("systemAgents.llm.modelsLoadFailed", { msg: r.error ?? t("systemAgents.llm.noModels") }));
       }
     } catch (e) {
-      toast.error(`加载模型出错：${(e as Error).message}`);
+      toast.error(t("systemAgents.llm.modelsLoadError", { msg: (e as Error).message }));
     } finally {
       setLoadingModels(false);
     }
@@ -404,12 +406,12 @@ function ProfileSheet({
       );
       // 回复内容一并展示：看得见模型确实说了话，才算和会话里跑通是一回事。
       if (r.ok)
-        toast.success(`连接成功 · ${r.latency_ms ?? "?"}ms · ${r.model ?? model}`, {
-          description: r.reply ? `回复：${r.reply}` : undefined,
+        toast.success(t("systemAgents.llm.connectOk", { ms: r.latency_ms ?? "?", model: r.model ?? model }), {
+          description: r.reply ? t("systemAgents.llm.replyPrefix", { text: r.reply }) : undefined,
         });
-      else toast.error(`连接失败：${r.error ?? "未知"}`);
+      else toast.error(t("systemAgents.llm.connectFailed", { msg: r.error ?? t("common.unknown") }));
     } catch (e) {
-      toast.error(`测试出错：${(e as Error).message}`);
+      toast.error(t("systemAgents.llm.testError", { msg: (e as Error).message }));
     } finally {
       setTesting(false);
     }
@@ -417,7 +419,7 @@ function ProfileSheet({
 
   async function save() {
     if (!name.trim() || !model.trim()) {
-      toast.error("请填写名称与模型");
+      toast.error(t("systemAgents.llm.nameModelRequired"));
       return;
     }
     if (saving) return;
@@ -446,12 +448,12 @@ function ProfileSheet({
         session_header_key: sessionHeaderKey.trim(),
         retry,
       });
-      if (isNew) toast.success(`已新建：${name.trim()}（在卡片上「设为激活」以启用）`);
-      else toast.success(profile?.is_default ? "已保存，激活配置即时生效，无需重启" : "已保存");
+      if (isNew) toast.success(t("systemAgents.llm.created", { name: name.trim() }));
+      else toast.success(profile?.is_default ? t("systemAgents.llm.savedActive") : t("common.saved"));
       onSaved(String(id));
       onOpenChange(false);
     } catch (e) {
-      toast.error(`保存失败：${(e as Error).message}`);
+      toast.error(t("systemAgents.llm.saveFailed", { msg: (e as Error).message }));
     } finally {
       setSaving(false);
     }
@@ -465,36 +467,34 @@ function ProfileSheet({
       >
         <SheetHeader className="px-4">
           <SheetTitle className="flex items-center gap-2">
-            {isNew ? "新建模型配置" : `编辑：${profile?.name}`}
+            {isNew
+              ? t("systemAgents.llm.newProfile")
+              : t("systemAgents.llm.editProfile", { name: profile?.name ?? "" })}
             {profile?.is_default && (
               <Badge variant="outline" className="border-amber-400/50 text-amber-500">
-                激活中
+                {t("systemAgents.llm.activeNow")}
               </Badge>
             )}
           </SheetTitle>
-          <SheetDescription>
-            {isNew
-              ? "新建后不会自动激活，请在卡片上「设为激活」以启用。"
-              : "修改后点击保存；激活配置保存后对全部 Agent 立即生效。"}
-          </SheetDescription>
+          <SheetDescription>{isNew ? t("systemAgents.llm.newHint") : t("systemAgents.llm.editHint")}</SheetDescription>
         </SheetHeader>
 
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="p-name">名称</Label>
+              <Label htmlFor="p-name">{t("common.name")}</Label>
               <Input
                 id="p-name"
-                placeholder="例如：OpenAI 生产"
+                placeholder={t("systemAgents.llm.namePh")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
-              <Label>格式</Label>
+              <Label>{t("systemAgents.llm.format")}</Label>
               <Select value={format} onValueChange={(v) => setFormat(v as "anthropic" | "openai" | "openai-responses")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="选择格式" />
+                  <SelectValue placeholder={t("systemAgents.llm.formatPh")} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="anthropic">Anthropic</SelectItem>
@@ -506,7 +506,7 @@ function ProfileSheet({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="p-model">模型</Label>
+            <Label htmlFor="p-model">{t("systemAgents.llm.model")}</Label>
             <div className="flex gap-2">
               <Input
                 id="p-model"
@@ -526,7 +526,7 @@ function ProfileSheet({
                     className="shrink-0"
                     disabled={loadingModels}
                     onClick={loadModels}
-                    title="从 API 加载可用模型"
+                    title={t("systemAgents.llm.loadModelsTitle")}
                   >
                     {loadingModels ? <Loader2Icon className="animate-spin" /> : <RefreshCwIcon />}
                   </Button>
@@ -553,7 +553,7 @@ function ProfileSheet({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="p-base-url">Base URL（可选）</Label>
+            <Label htmlFor="p-base-url">{t("systemAgents.llm.baseUrlOpt")}</Label>
             <Input
               id="p-base-url"
               className="font-mono"
@@ -564,7 +564,7 @@ function ProfileSheet({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="p-proxy">代理（可选）</Label>
+            <Label htmlFor="p-proxy">{t("systemAgents.llm.proxyOpt")}</Label>
             <Input
               id="p-proxy"
               className="font-mono"
@@ -572,26 +572,19 @@ function ProfileSheet({
               value={proxy}
               onChange={(e) => setProxy(e.target.value)}
             />
-            <p className="text-muted-foreground text-xs">
-              仅 LLM 出站请求走此代理，支持 http/https/socks5，可带账号密码（如
-              socks5://user:pass@host:port，密码含特殊字符需 URL 编码）；留空表示不使用代理（直连）。
-            </p>
+            <p className="text-muted-foreground text-xs">{t("systemAgents.llm.proxyHint")}</p>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="p-session-header">自定义会话头（可选）</Label>
+            <Label htmlFor="p-session-header">{t("systemAgents.llm.sessionHeaderOpt")}</Label>
             <Input
               id="p-session-header"
               className="font-mono"
-              placeholder="如 x-session-id（留空=不发送）"
+              placeholder={t("systemAgents.llm.sessionHeaderPh")}
               value={sessionHeaderKey}
               onChange={(e) => setSessionHeaderKey(e.target.value)}
             />
-            <p className="text-muted-foreground text-xs">
-              填写头名后，每次请求都会带上这个 HTTP 头，头值自动填为 <b>当前会话的 session id</b>（chat 会话如
-              conv-12、worker 如 exp3-worker-i87）。用于按 session-id 头做提示缓存 /
-              粘性路由的网关；同一会话多轮稳定、不同会话互不相同。留空则不发送。
-            </p>
+            <p className="text-muted-foreground text-xs">{t("systemAgents.llm.sessionHeaderHint")}</p>
           </div>
 
           <div className="grid gap-2">
@@ -599,7 +592,7 @@ function ProfileSheet({
             <Input
               id="p-api-key"
               type="password"
-              placeholder={keyHint ? `已设置（${keyHint}），留空保持不变` : "sk-…"}
+              placeholder={keyHint ? t("systemAgents.llm.keySetPh", { hint: keyHint }) : "sk-…"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />
@@ -607,15 +600,15 @@ function ProfileSheet({
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
-              <Label htmlFor="p-rps">每秒限速</Label>
+              <Label htmlFor="p-rps">{t("systemAgents.llm.rps")}</Label>
               <Input id="p-rps" type="number" min={0} value={rps} onChange={(e) => setRps(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="p-rpm">每分钟限速</Label>
+              <Label htmlFor="p-rpm">{t("systemAgents.llm.rpm")}</Label>
               <Input id="p-rpm" type="number" min={0} value={rpm} onChange={(e) => setRpm(e.target.value)} />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="p-cw">上下文窗口(K)</Label>
+              <Label htmlFor="p-cw">{t("systemAgents.llm.contextWindow")}</Label>
               <Input
                 id="p-cw"
                 type="number"
@@ -627,20 +620,15 @@ function ProfileSheet({
               />
             </div>
           </div>
-          <p className="-mt-2 text-muted-foreground text-xs">
-            限速 0 = 不限，全 Agent 共享。上下文窗口单位 K（千 token），0 = 默认 200K，上限 1000（即
-            1M）；设太高会导致压缩不触发。
-          </p>
+          <p className="-mt-2 text-muted-foreground text-xs">{t("systemAgents.llm.limitsHint")}</p>
 
           <div className="grid gap-3 rounded-lg border p-3">
             <div className="flex items-center justify-between gap-4">
               <div className="grid gap-0.5">
                 <Label htmlFor="p-priority" className="text-sm">
-                  轮询优先级
+                  {t("systemAgents.llm.poolPriority")}
                 </Label>
-                <p className="text-muted-foreground text-xs">
-                  数字越大越先被选中；激活配置恒为第 1 顺位，与本值无关。相同优先级的配置会轮流打头，天然分摊额度。
-                </p>
+                <p className="text-muted-foreground text-xs">{t("systemAgents.llm.poolPriorityHint")}</p>
               </div>
               <Input
                 id="p-priority"
@@ -652,24 +640,25 @@ function ProfileSheet({
             </div>
             <div className="flex items-center justify-between gap-4 border-t pt-3">
               <div className="grid gap-0.5">
-                <Label className="text-sm">不参与轮询</Label>
-                <p className="text-muted-foreground text-xs">
-                  开启后不会被当作故障转移目标（仍可被 Agent / 任务显式指定使用）。 适合「只给某个 Agent
-                  专用、不希望别人失败时烧掉」的昂贵配置。
-                </p>
+                <Label className="text-sm">{t("systemAgents.llm.notInPool")}</Label>
+                <p className="text-muted-foreground text-xs">{t("systemAgents.llm.excludeHint")}</p>
               </div>
-              <Switch checked={poolExclude} onCheckedChange={setPoolExclude} aria-label="不参与轮询" />
+              <Switch
+                checked={poolExclude}
+                onCheckedChange={setPoolExclude}
+                aria-label={t("systemAgents.llm.notInPool")}
+              />
             </div>
             <div className="flex items-center justify-between gap-4 border-t pt-3">
               <div className="grid gap-0.5">
-                <Label className="text-sm">流式输出 · streaming</Label>
-                <p className="text-muted-foreground text-xs">
-                  开启（默认）走流式 SSE，有运行中实时进度与实时 token 计数。 关闭则走真·非流式（stream:false，
-                  一次性返回完整响应）——可绕开部分网关糟糕的 SSE 实现（空帧 / 思考字段丢帧），
-                  代价是失去运行中的实时进度。
-                </p>
+                <Label className="text-sm">{t("systemAgents.llm.streaming")}</Label>
+                <p className="text-muted-foreground text-xs">{t("systemAgents.llm.streamingHint")}</p>
               </div>
-              <Switch checked={streaming} onCheckedChange={setStreaming} aria-label="流式输出" />
+              <Switch
+                checked={streaming}
+                onCheckedChange={setStreaming}
+                aria-label={t("systemAgents.llm.streamingAria")}
+              />
             </div>
           </div>
 
@@ -677,13 +666,9 @@ function ProfileSheet({
             <div className="flex items-center justify-between gap-4">
               <div className="grid gap-0.5">
                 <Label htmlFor="p-max-tokens" className="text-sm">
-                  输出上限 · max tokens
+                  {t("systemAgents.llm.maxTokens")}
                 </Label>
-                <p className="text-muted-foreground text-xs">
-                  单次回复最多生成多少 token，随每次请求发出。0（默认）= 不发送该字段，由服务端默认值决定。
-                  这与上面的「上下文窗口」是两回事：那是模型总容量，只在本地用来算压缩阈值。
-                  设太小会让推理模型在思考阶段就被截断，一个字答案都出不来。
-                </p>
+                <p className="text-muted-foreground text-xs">{t("systemAgents.llm.maxTokensHint")}</p>
               </div>
               <Input
                 id="p-max-tokens"
@@ -697,8 +682,8 @@ function ProfileSheet({
             </div>
             <div className="flex items-center justify-between gap-4 border-t pt-3">
               <div className="grid gap-0.5">
-                <Label className="text-sm">上限字段名</Label>
-                <p className="text-muted-foreground text-xs">{MAX_TOKENS_FIELD_HINTS[format]}</p>
+                <Label className="text-sm">{t("systemAgents.llm.maxTokensField")}</Label>
+                <p className="text-muted-foreground text-xs">{maxTokensFieldHints()[format]}</p>
               </div>
               <Select
                 value={format === "openai" ? maxTokensField : NONE}
@@ -709,7 +694,7 @@ function ProfileSheet({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {MAX_TOKENS_FIELDS.map((o) => (
+                  {maxTokensFields().map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}
                     </SelectItem>
@@ -722,18 +707,15 @@ function ProfileSheet({
           <div className="grid gap-3 rounded-lg border p-3">
             <div className="flex items-center justify-between gap-4">
               <div className="grid gap-0.5">
-                <Label className="text-sm">思考开关 · thinking.type</Label>
-                <p className="text-muted-foreground text-xs">
-                  控制是否发送 thinking 字段。不发送=不带该字段（兼容 MiniMax 等不支持 的模型）；关闭=发
-                  disabled；开启=发 enabled。与下面的强度互相独立。
-                </p>
+                <Label className="text-sm">{t("systemAgents.llm.thinkingType")}</Label>
+                <p className="text-muted-foreground text-xs">{t("systemAgents.llm.thinkingTypeHint")}</p>
               </div>
               <Select value={thinkingType} onValueChange={setThinkingType}>
                 <SelectTrigger className="w-32 shrink-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {THINKING_TYPES.map((o) => (
+                  {thinkingTypes().map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}
                     </SelectItem>
@@ -743,18 +725,15 @@ function ProfileSheet({
             </div>
             <div className="flex items-center justify-between gap-4 border-t pt-3">
               <div className="grid gap-0.5">
-                <Label className="text-sm">思考强度 · reasoning_effort</Label>
-                <p className="text-muted-foreground text-xs">
-                  独立的强度档位（OpenAI reasoning_effort / Anthropic output_config.effort）。 有些接口没有 thinking
-                  字段、只靠强度即可激活思考，故可单独设置、不发送思考开关。
-                </p>
+                <Label className="text-sm">{t("systemAgents.llm.reasoningEffort")}</Label>
+                <p className="text-muted-foreground text-xs">{t("systemAgents.llm.reasoningEffortHint")}</p>
               </div>
               <Select value={effort} onValueChange={setEffort}>
                 <SelectTrigger className="w-32 shrink-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EFFORT_LEVELS.map((o) => (
+                  {effortLevels().map((o) => (
                     <SelectItem key={o.value} value={o.value}>
                       {o.label}
                     </SelectItem>
@@ -770,12 +749,12 @@ function ProfileSheet({
         <div className="flex gap-2 border-t px-4 py-3">
           <Button variant="outline" onClick={testConnection} disabled={testing}>
             {testing ? <Loader2Icon className="animate-spin" /> : <PlugZapIcon />}
-            {testing ? "测试中…" : "测试连接"}
+            {testing ? t("systemAgents.llm.testing") : t("systemAgents.llm.testConnection")}
           </Button>
           <Button onClick={save} disabled={saving} className="flex-1">
             {saving && <Loader2Icon className="animate-spin" />}
             {!saving && (isNew ? <PlusIcon /> : <SaveIcon />)}
-            {isNew ? "新建" : "保存"}
+            {isNew ? t("common.create") : t("common.save")}
           </Button>
         </div>
       </SheetContent>
@@ -786,6 +765,7 @@ function ProfileSheet({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function LLMPage() {
+  const t = useTranslations();
   const [profiles, setProfiles] = React.useState<LLMProfile[]>([]);
   const [pool, setPool] = React.useState<LLMPoolStatus | null>(null);
   const [poolOpen, setPoolOpen] = React.useState(false);
@@ -829,24 +809,24 @@ export default function LLMPage() {
   async function activate(id: string, name: string) {
     try {
       await api.activateLLMProfile(id);
-      toast.success(`已激活：${name}`);
+      toast.success(t("systemAgents.llm.activated", { name }));
       await load();
     } catch (e) {
-      toast.error(`激活失败：${(e as Error).message}`);
+      toast.error(t("systemAgents.llm.activateFailed", { msg: (e as Error).message }));
     }
   }
 
   async function remove(p: LLMProfile) {
     if (p.is_default) {
-      toast.error("无法删除当前激活的配置");
+      toast.error(t("systemAgents.llm.cannotDeleteActive"));
       return;
     }
     try {
       await api.deleteLLMProfile(p.id);
-      toast.success(`已删除：${p.name}`);
+      toast.success(t("systemAgents.llm.deleted", { name: p.name }));
       await load();
     } catch (e) {
-      toast.error(`删除失败：${(e as Error).message}`);
+      toast.error(t("systemAgents.llm.deleteFailed", { msg: (e as Error).message }));
     }
   }
 
@@ -857,29 +837,27 @@ export default function LLMPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-semibold text-xl tracking-tight">LLM</h1>
-          <p className="text-muted-foreground text-sm">
-            全 Agent 共享的格式 / 模型 / 限速配置。点击卡片编辑，星标为当前激活配置。
-          </p>
+          <p className="text-muted-foreground text-sm">{t("systemAgents.llm.pageDesc")}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setPoolOpen(true)}>
-            <ZapIcon /> 轮询配置
+            <ZapIcon /> {t("systemAgents.llm.poolConfig")}
             {poolOn && (
               <Badge variant="outline" className="ml-1 border-emerald-500/50 text-emerald-600 dark:text-emerald-400">
-                已开启
+                {t("systemAgents.llm.enabledBadge")}
               </Badge>
             )}
           </Button>
           <Button size="sm" variant="outline" onClick={() => openEditor(null)}>
-            <PlusIcon /> 新建
+            <PlusIcon /> {t("common.create")}
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="profiles" className="flex-1">
         <TabsList>
-          <TabsTrigger value="profiles">模型配置</TabsTrigger>
-          <TabsTrigger value="retry">重试与退避</TabsTrigger>
+          <TabsTrigger value="profiles">{t("systemAgents.llm.tabProfiles")}</TabsTrigger>
+          <TabsTrigger value="retry">{t("systemAgents.llm.tabRetry")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profiles" className="mt-4">
@@ -931,14 +909,22 @@ export default function LLMPage() {
                       <span>
                         {p.rate_per_second}/s · {p.rate_per_minute}/min
                       </span>
-                      {p.proxy && <span className="truncate">代理 {p.proxy}</span>}
+                      {p.proxy && <span className="truncate">{t("systemAgents.llm.proxyN", { value: p.proxy })}</span>}
                       {p.reasoning_effort && (
-                        <span>思考 {p.reasoning_effort === "off" ? "关" : p.reasoning_effort}</span>
+                        <span>
+                          {t("systemAgents.llm.thinkingN", {
+                            value: p.reasoning_effort === "off" ? t("systemAgents.llm.off") : p.reasoning_effort,
+                          })}
+                        </span>
                       )}
                       {/* 轮询相关的两个字段只在轮询开着时才有意义，关着时不占版面 */}
                       {poolOn &&
                         !p.is_default &&
-                        (p.pool_exclude ? <span>不参与轮询</span> : <span>优先级 {p.priority ?? 0}</span>)}
+                        (p.pool_exclude ? (
+                          <span>{t("systemAgents.llm.notInPool")}</span>
+                        ) : (
+                          <span>{t("systemAgents.llm.priorityN", { n: p.priority ?? 0 })}</span>
+                        ))}
                     </div>
 
                     <div className="mt-1 flex gap-2">
@@ -952,12 +938,12 @@ export default function LLMPage() {
                           void activate(p.id, p.name);
                         }}
                       >
-                        {p.is_default ? "已激活" : "设为激活"}
+                        {p.is_default ? t("systemAgents.llm.activeState") : t("systemAgents.llm.setActive")}
                       </Button>
                       <Button
                         size="icon"
                         variant="outline"
-                        aria-label="删除配置"
+                        aria-label={t("systemAgents.llm.deleteProfile")}
                         onClick={(e) => {
                           e.stopPropagation();
                           void remove(p);
@@ -972,7 +958,7 @@ export default function LLMPage() {
             })}
             {profiles.length === 0 && (
               <div className="col-span-full rounded-lg border border-dashed p-10 text-center text-muted-foreground text-sm">
-                还没有模型配置，点击右上角「新建」创建第一个。
+                {t("systemAgents.llm.noProfiles")}
               </div>
             )}
           </div>

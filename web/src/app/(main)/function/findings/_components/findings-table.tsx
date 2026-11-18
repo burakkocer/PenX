@@ -36,6 +36,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useTranslations } from "@/hooks/use-translations";
+import { intlLocale } from "@/lib/i18n/runtime";
 import { statusMeta } from "@/lib/status";
 import type { ActiveFindingRetest, Finding, FindingStatus, Severity } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -78,7 +80,7 @@ export function isSameFinding(left: Finding, right: Finding): boolean {
 }
 
 export function fmtTime(ts: string) {
-  return new Date(ts).toLocaleString("zh-CN", {
+  return new Date(ts).toLocaleString(intlLocale(), {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -129,8 +131,9 @@ export function FindingsTable({
   activeRetests,
   onDeepen,
   onDelete,
-  selectAllLabel = "选择当前页全部",
+  selectAllLabel,
 }: FindingsTableProps) {
+  const t = useTranslations();
   const selectableIds = items.map((finding) => finding.finding_id).filter((id): id is string => Boolean(id));
   const selectedCount = selectableIds.filter((id) => selectedIds.has(id)).length;
   let headerChecked: boolean | "indeterminate" = false;
@@ -149,17 +152,17 @@ export function FindingsTable({
             <Checkbox
               checked={headerChecked}
               onCheckedChange={(checked) => onToggleSelectedPage(selectableIds, checked === true)}
-              aria-label={selectAllLabel}
+              aria-label={selectAllLabel ?? t("findings.selectAllPage")}
             />
           </TableHead>
           <TableHead className="w-8" />
-          <TableHead className="w-20">严重度</TableHead>
-          <TableHead>漏洞名称</TableHead>
-          <TableHead className="w-44">资产</TableHead>
-          <TableHead className="w-28">状态</TableHead>
-          <TableHead className="w-32">所属任务</TableHead>
-          <TableHead className="w-24">时间</TableHead>
-          <TableHead className="w-48">操作</TableHead>
+          <TableHead className="w-20">{t("findings.table.severity")}</TableHead>
+          <TableHead>{t("findings.table.name")}</TableHead>
+          <TableHead className="w-44">{t("findings.table.asset")}</TableHead>
+          <TableHead className="w-28">{t("common.status")}</TableHead>
+          <TableHead className="w-32">{t("findings.table.task")}</TableHead>
+          <TableHead className="w-24">{t("common.time")}</TableHead>
+          <TableHead className="w-48">{t("common.actions")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -186,7 +189,7 @@ export function FindingsTable({
                     <Checkbox
                       checked={selectedIds.has(f.finding_id)}
                       onCheckedChange={(c) => onToggleSelected(f.finding_id as string, c === true)}
-                      aria-label="选择该漏洞"
+                      aria-label={t("findings.table.selectRow")}
                     />
                   )}
                 </TableCell>
@@ -205,15 +208,19 @@ export function FindingsTable({
                         href={`/function/findings/detail?id=${f.finding_id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="truncate font-medium hover:text-primary hover:underline"
-                        title="查看发现详情"
+                        title={t("findings.table.viewDetail")}
                       >
-                        {f.name || f.vulnclass || "未分类"}
+                        {f.name || f.vulnclass || t("findings.table.uncategorized")}
                       </Link>
                     ) : (
-                      <span className="truncate font-medium">{f.name || f.vulnclass || "未分类"}</span>
+                      <span className="truncate font-medium">
+                        {f.name || f.vulnclass || t("findings.table.uncategorized")}
+                      </span>
                     )}
                     <span className="truncate text-xs text-muted-foreground">{f.summary}</span>
-                    <Badge variant="outline">流量证据 {f.traffic_count ?? 0} 条</Badge>
+                    <Badge variant="outline">
+                      {t("findings.table.trafficEvidence", { count: f.traffic_count ?? 0 })}
+                    </Badge>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -274,22 +281,27 @@ export function FindingsTable({
                   <div className="flex items-center gap-1">
                     {retest ? (
                       <Button asChild size="sm" variant="ghost">
-                        <Link href={`/chat?c=${retest.conversation_id}`} title="查看正在进行的复测会话">
+                        <Link href={`/chat?c=${retest.conversation_id}`} title={t("findings.table.viewRetestSession")}>
                           <Spinner data-icon="inline-start" />
-                          复测中
+                          {t("findings.table.retesting")}
                         </Link>
                       </Button>
                     ) : null}
                     {!retest && f.finding_id && !f.inherited ? (
-                      <Button size="sm" variant="ghost" onClick={() => onRetest(f)} title="在独立会话中复测该漏洞">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => onRetest(f)}
+                        title={t("findings.table.retestInSession")}
+                      >
                         <RotateCcwIcon data-icon="inline-start" />
-                        复测
+                        {t("findings.retest")}
                       </Button>
                     ) : null}
                     {f.finding_id && f.task_id && (
                       <Button size="sm" variant="ghost" onClick={() => onDeepen(f)}>
                         <FlaskConicalIcon data-icon="inline-start" />
-                        深入
+                        {t("findings.table.deepen")}
                       </Button>
                     )}
                     {f.finding_id && (
@@ -299,25 +311,23 @@ export function FindingsTable({
                             size="icon"
                             variant="ghost"
                             className="size-7 text-muted-foreground hover:text-destructive"
-                            aria-label="删除漏洞"
+                            aria-label={t("findings.table.deleteFinding")}
                           >
                             <Trash2Icon className="size-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>确认删除该漏洞？</AlertDialogTitle>
+                            <AlertDialogTitle>{t("findings.table.confirmDelete")}</AlertDialogTitle>
                             <AlertDialogDescription className="break-words">
-                              「
-                              <span className="break-all">
-                                {f.name || f.vulnclass || f.summary || `#${f.finding_id}`}
-                              </span>
-                              」将被永久删除， 同时从发现列表、任务发现 Tab 与探索图中移除，此操作不可撤销。
+                              {t("findings.table.deleteWarning", {
+                                name: f.name || f.vulnclass || f.summary || `#${f.finding_id}`,
+                              })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>取消</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onDelete(f)}>删除</AlertDialogAction>
+                            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDelete(f)}>{t("common.delete")}</AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -335,23 +345,23 @@ export function FindingsTable({
                       {f.finding_id && edit && (
                         <div className="flex flex-wrap items-end gap-3 rounded-md border bg-background px-3 py-2.5">
                           <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
-                            <Label className="text-xs text-muted-foreground">漏洞名称</Label>
+                            <Label className="text-xs text-muted-foreground">{t("findings.table.name")}</Label>
                             <Input
                               value={edit.name}
                               onChange={(e) => onEditChange((s) => (s ? { ...s, name: e.target.value } : s))}
-                              placeholder="可读标题，留空回退类别"
+                              placeholder={t("findings.table.namePlaceholder")}
                             />
                           </div>
                           <div className="flex min-w-[10rem] flex-col gap-1">
-                            <Label className="text-xs text-muted-foreground">类别</Label>
+                            <Label className="text-xs text-muted-foreground">{t("findings.table.category")}</Label>
                             <Input
                               value={edit.vulnclass}
                               onChange={(e) => onEditChange((s) => (s ? { ...s, vulnclass: e.target.value } : s))}
-                              placeholder="如 SQL Injection"
+                              placeholder={t("findings.table.categoryPlaceholder")}
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <Label className="text-xs text-muted-foreground">严重等级</Label>
+                            <Label className="text-xs text-muted-foreground">{t("findings.table.severityLevel")}</Label>
                             <Select
                               value={edit.severity}
                               onValueChange={(v) => onEditChange((s) => (s ? { ...s, severity: v as Severity } : s))}
@@ -369,23 +379,23 @@ export function FindingsTable({
                             </Select>
                           </div>
                           <Button size="sm" disabled={saving} onClick={() => onSave(f)}>
-                            {saving ? "保存中…" : "保存"}
+                            {saving ? t("findings.table.saving") : t("common.save")}
                           </Button>
                         </div>
                       )}
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         <ShieldAlertIcon className="size-3.5" />
-                        证据
+                        {t("findings.table.evidence")}
                         {f.vulnclass && (
                           <span>
-                            · 类型：
+                            · {t("findings.table.typeLabel")}
                             <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{f.vulnclass}</code>
                           </span>
                         )}
                         {f.param_id && <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{f.param_id}</code>}
                         {f.assets && f.assets.length > 0 && (
                           <span className="flex flex-wrap items-center gap-1">
-                            · 资产：
+                            · {t("findings.table.assetLabel")}
                             {f.assets.map((a) => (
                               <code key={a.id} className="rounded bg-muted px-1.5 py-0.5 font-mono" title={a.type}>
                                 {a.label}
@@ -404,12 +414,12 @@ export function FindingsTable({
                           <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                             <span className="flex items-center gap-2">
                               <FileTextIcon className="size-3.5" />
-                              详细报告
+                              {t("findings.table.report")}
                             </span>
                             {reports[rowKey]?.status === "done" && reports[rowKey]?.text.trim() && (
                               <CopyButton
                                 text={reports[rowKey]?.text}
-                                successMessage="已复制详细报告"
+                                successMessage={t("findings.table.reportCopied")}
                                 variant="ghost"
                                 className="h-6 px-2 text-xs"
                               />
@@ -418,11 +428,13 @@ export function FindingsTable({
                           {(() => {
                             const rep = reports[rowKey];
                             if (!rep || rep.status === "loading")
-                              return <p className="text-xs text-muted-foreground">加载中…</p>;
+                              return <p className="text-xs text-muted-foreground">{t("common.loading")}</p>;
                             if (rep.status === "error")
-                              return <p className="text-xs text-muted-foreground">报告加载失败。</p>;
+                              return (
+                                <p className="text-xs text-muted-foreground">{t("findings.table.reportLoadFailed")}</p>
+                              );
                             if (!rep.text.trim())
-                              return <p className="text-xs text-muted-foreground">暂无详细报告。</p>;
+                              return <p className="text-xs text-muted-foreground">{t("findings.table.noReport")}</p>;
                             return (
                               // break-words 会继承到段落/列表,pre 另加
                               // whitespace-pre-wrap 让代码块也换行——否则长代码行/长 URL
@@ -444,7 +456,7 @@ export function FindingsTable({
         {items.length === 0 && (
           <TableRow>
             <TableCell colSpan={COLUMN_COUNT} className="py-12 text-center text-sm text-muted-foreground">
-              没有匹配的发现。
+              {t("findings.noMatches")}
             </TableCell>
           </TableRow>
         )}
