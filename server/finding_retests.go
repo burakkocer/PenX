@@ -76,7 +76,7 @@ func (s *Server) startFindingRetest(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Notes = strings.TrimSpace(req.Notes)
 	if utf8.RuneCountInString(req.Notes) > 4000 {
-		writeErr(w, 400, "复测补充说明最多 4000 个字符")
+		writeErrKey(w, r, 400, "conv.retestNoteTooLong")
 		return
 	}
 	f, err := pg.GetFinding(id)
@@ -94,7 +94,7 @@ func (s *Server) startFindingRetest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a == nil || !a.Enabled {
-		writeErr(w, 409, "漏洞复测 Agent 不存在或未启用，请在 Agent 管理中配置 retester")
+		writeErrKey(w, r, 409, "conv.retesterAgentUnavailable")
 		return
 	}
 	for _, key := range []string{"get_finding_retest_context", "record_finding_retest_result"} {
@@ -104,7 +104,7 @@ func (s *Server) startFindingRetest(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if t == nil || !t.Enabled || !slices.Contains(t.Agents, a.Key) {
-			writeErr(w, 409, "请为复测 Agent 启用并绑定工具："+key)
+			writeErrKey(w, r, 409, "conv.retesterToolRequired", key)
 			return
 		}
 	}
@@ -113,7 +113,7 @@ func (s *Server) startFindingRetest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.ctx.Err() != nil {
-		writeErr(w, 503, "服务正在停止")
+		writeErrKey(w, r, 503, "conv.serviceStopping")
 		return
 	}
 	retest, conv, created, err := pg.CreateFindingRetest(r.Context(), id, req.Notes)

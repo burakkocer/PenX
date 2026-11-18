@@ -449,7 +449,7 @@ func (s *Server) listTaskArchives(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getTaskArchive(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "归档 id 无效")
+		writeErrKey(w, r, 400, "conv.invalidArchiveId")
 		return
 	}
 	item, err := s.m.pg.GetTaskArchive(id)
@@ -458,7 +458,7 @@ func (s *Server) getTaskArchive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if item == nil {
-		writeErr(w, 404, "归档不存在")
+		writeErrKey(w, r, 404, "conv.archiveNotFound")
 		return
 	}
 	writeJSON(w, 200, item)
@@ -467,7 +467,7 @@ func (s *Server) getTaskArchive(w http.ResponseWriter, r *http.Request) {
 func (s *Server) queueTaskArchive(w http.ResponseWriter, r *http.Request) {
 	id, ok := canonicalTaskID(r.PathValue("id"))
 	if !ok {
-		writeErr(w, 400, "任务 id 无效")
+		writeErrKey(w, r, 400, "conv.invalidTaskId")
 		return
 	}
 	numeric, _ := strconv.ParseInt(id, 10, 64)
@@ -483,7 +483,7 @@ func (s *Server) queueTaskArchive(w http.ResponseWriter, r *http.Request) {
 func (s *Server) queueTaskArchiveRestore(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "归档 id 无效")
+		writeErrKey(w, r, 400, "conv.invalidArchiveId")
 		return
 	}
 	item, err := s.m.pg.QueueTaskArchiveRestore(id)
@@ -498,7 +498,7 @@ func (s *Server) queueTaskArchiveRestore(w http.ResponseWriter, r *http.Request)
 func (s *Server) queueTaskArchiveDelete(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "归档 id 无效")
+		writeErrKey(w, r, 400, "conv.invalidArchiveId")
 		return
 	}
 	item, err := s.m.pg.QueueTaskArchiveDelete(id)
@@ -518,11 +518,11 @@ func (s *Server) queueTaskArchivesBatch(w http.ResponseWriter, r *http.Request) 
 	}
 	parsed := normalizeBatchTaskIDs(request.TaskIDs)
 	if len(parsed) == 0 {
-		writeErr(w, 400, "task_ids 不能为空")
+		writeErrKey(w, r, 400, "conv.taskIdsRequired")
 		return
 	}
 	if len(parsed) > 100 {
-		writeErr(w, 400, "一次最多处理 100 个任务")
+		writeErrKey(w, r, 400, "conv.tooManyTasks")
 		return
 	}
 	ids := make([]string, 0, len(parsed))

@@ -210,7 +210,7 @@ func (s *Server) sideProvider(model sidequestion.Model) (llm.Provider, error) {
 func (s *Server) sideParent(w http.ResponseWriter, r *http.Request, kind string) (sidequestion.Parent, bool) {
 	p := sidequestion.Parent{}
 	if s.side == nil || s.m.pg == nil {
-		writeErr(w, 503, "旁路服务不可用")
+		writeErrKey(w, r, 503, "conv.sideServiceUnavailable")
 		return p, false
 	}
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
@@ -242,7 +242,7 @@ func (s *Server) sideParent(w http.ResponseWriter, r *http.Request, kind string)
 		return p, false
 	}
 	if pt == nil || s.engine.IsDeleting(t.ID) {
-		writeErr(w, 409, "任务已归档或正在删除")
+		writeErrKey(w, r, 409, "conv.taskArchivedOrDeleting")
 		return p, false
 	}
 	p.TaskID, p.ExplorationID = id, t.ExpID
@@ -262,7 +262,7 @@ func (s *Server) sideParent(w http.ResponseWriter, r *http.Request, kind string)
 			return p, false
 		}
 		if n.State == "stopped" {
-			writeErr(w, 409, "Worker 已删除")
+			writeErrKey(w, r, 409, "conv.workerDeleted")
 			return p, false
 		}
 		p.IntentID = iid
@@ -349,13 +349,13 @@ func (s *Server) handleSideQuestions(w http.ResponseWriter, r *http.Request, p s
 	}
 	in.Question = strings.TrimSpace(in.Question)
 	if in.Question == "" || len([]rune(in.Question)) > 4000 || !validWorkerMessageRequestID(in.ClientID) {
-		writeErr(w, 400, "问题须为 1–4000 字符，并提供有效请求 ID")
+		writeErrKey(w, r, 400, "conv.sideQuestionInvalid")
 		return
 	}
 	s.side.commands.Lock()
 	defer s.side.commands.Unlock()
 	if p.TaskID > 0 && s.engine.IsDeleting(strconv.FormatInt(p.TaskID, 10)) {
-		writeErr(w, 409, "任务正在归档或删除")
+		writeErrKey(w, r, 409, "conv.taskArchivingOrDeleting")
 		return
 	}
 	if existing, err := s.m.pg.ExistingSideRequest(r.Context(), key, in.ClientID); err != nil {
@@ -363,14 +363,14 @@ func (s *Server) handleSideQuestions(w http.ResponseWriter, r *http.Request, p s
 		return
 	} else if existing != nil {
 		if existing.Question != in.Question {
-			writeErr(w, 409, "同一请求 ID 不能用于不同问题")
+			writeErrKey(w, r, 409, "conv.requestIdReused")
 			return
 		}
 		writeJSON(w, 200, existing)
 		return
 	}
 	if snap == nil {
-		writeErr(w, 409, "尚无上下文快照，请先运行主 Agent")
+		writeErrKey(w, r, 409, "conv.noContextSnapshot")
 		return
 	}
 	provider, err := s.sideProvider(snap.Model)
@@ -392,7 +392,7 @@ func (s *Server) handleSideQuestions(w http.ResponseWriter, r *http.Request, p s
 		return
 	}
 	if full {
-		writeErr(w, 429, "旁路请求已达并发上限，请稍后重试")
+		writeErrKey(w, r, 429, "conv.sideConcurrencyLimit")
 		return
 	}
 	agentQuestion, ok := s.prepareChatMentionMessage(w, in.Question)

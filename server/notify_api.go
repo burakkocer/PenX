@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -182,11 +181,11 @@ func (s *Server) notifyCreateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	var req notifyChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, 400, "请求体不是合法 JSON: "+err.Error())
+		writeErrKey(w, r, 400, "asset.invalidJSONBody", err.Error())
 		return
 	}
 	if req.Kind == nil || !notify.ValidKind(*req.Kind) {
-		writeErr(w, 400, fmt.Sprintf("渠道类型无效，可选：%s", strings.Join(notify.Kinds(), " / ")))
+		writeErrKey(w, r, 400, "asset.channelKindInvalid", strings.Join(notify.Kinds(), " / "))
 		return
 	}
 	name := ""
@@ -194,7 +193,7 @@ func (s *Server) notifyCreateChannel(w http.ResponseWriter, r *http.Request) {
 		name = strings.TrimSpace(*req.Name)
 	}
 	if name == "" {
-		writeErr(w, 400, "缺少渠道名称")
+		writeErrKey(w, r, 400, "asset.channelNameMissing")
 		return
 	}
 	channel, _ := notify.Get(*req.Kind)
@@ -211,7 +210,7 @@ func (s *Server) notifyCreateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Mode != nil {
 		if !db.ValidNotifyMode(*req.Mode) {
-			writeErr(w, 400, "推送模式无效，可选：realtime / digest")
+			writeErrKey(w, r, 400, "asset.pushModeInvalid")
 			return
 		}
 		ch.Mode = *req.Mode
@@ -219,7 +218,7 @@ func (s *Server) notifyCreateChannel(w http.ResponseWriter, r *http.Request) {
 	if req.RatePerMin != nil {
 		// 显式给值就照用——包括 0，它表示「不限流」，是合法配置。
 		if *req.RatePerMin < 0 {
-			writeErr(w, 400, "限流值不能为负")
+			writeErrKey(w, r, 400, "asset.rateLimitNegative")
 			return
 		}
 		ch.RatePerMin = *req.RatePerMin
@@ -258,7 +257,7 @@ func (s *Server) notifyUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	id, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "渠道 id 无效")
+		writeErrKey(w, r, 400, "asset.channelIDInvalid")
 		return
 	}
 	current, err := pg.NotificationChannelByID(r.Context(), id)
@@ -268,7 +267,7 @@ func (s *Server) notifyUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	var req notifyChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, 400, "请求体不是合法 JSON: "+err.Error())
+		writeErrKey(w, r, 400, "asset.invalidJSONBody", err.Error())
 		return
 	}
 
@@ -276,7 +275,7 @@ func (s *Server) notifyUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	kind := current.Kind
 	if req.Kind != nil {
 		if !notify.ValidKind(*req.Kind) {
-			writeErr(w, 400, fmt.Sprintf("渠道类型无效，可选：%s", strings.Join(notify.Kinds(), " / ")))
+			writeErrKey(w, r, 400, "asset.channelKindInvalid", strings.Join(notify.Kinds(), " / "))
 			return
 		}
 		kind = *req.Kind
@@ -317,7 +316,7 @@ func (s *Server) notifyUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Name != nil {
 		if ch.Name = strings.TrimSpace(*req.Name); ch.Name == "" {
-			writeErr(w, 400, "渠道名称不能为空")
+			writeErrKey(w, r, 400, "asset.channelNameEmpty")
 			return
 		}
 	}
@@ -326,14 +325,14 @@ func (s *Server) notifyUpdateChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Mode != nil {
 		if !db.ValidNotifyMode(*req.Mode) {
-			writeErr(w, 400, "推送模式无效，可选：realtime / digest")
+			writeErrKey(w, r, 400, "asset.pushModeInvalid")
 			return
 		}
 		ch.Mode = *req.Mode
 	}
 	if req.RatePerMin != nil {
 		if *req.RatePerMin < 0 {
-			writeErr(w, 400, "限流值不能为负")
+			writeErrKey(w, r, 400, "asset.rateLimitNegative")
 			return
 		}
 		ch.RatePerMin = *req.RatePerMin
@@ -381,7 +380,7 @@ func (s *Server) notifyDeleteChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	id, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "渠道 id 无效")
+		writeErrKey(w, r, 400, "asset.channelIDInvalid")
 		return
 	}
 	if err := pg.DeleteNotificationChannel(r.Context(), id); err != nil {
@@ -403,7 +402,7 @@ func (s *Server) notifyTestChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	id, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "渠道 id 无效")
+		writeErrKey(w, r, 400, "asset.channelIDInvalid")
 		return
 	}
 	ch, err := pg.NotificationChannelByID(r.Context(), id)
@@ -413,7 +412,7 @@ func (s *Server) notifyTestChannel(w http.ResponseWriter, r *http.Request) {
 	}
 	channel, ok := notify.Get(ch.Kind)
 	if !ok {
-		writeErr(w, 400, fmt.Sprintf("渠道类型 %q 未注册", ch.Kind))
+		writeErrKey(w, r, 400, "asset.channelKindUnregistered", ch.Kind)
 		return
 	}
 	var cfg map[string]any
@@ -495,7 +494,7 @@ func (s *Server) notifyRetryDelivery(w http.ResponseWriter, r *http.Request) {
 	}
 	id, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "投递 id 无效")
+		writeErrKey(w, r, 400, "asset.deliveryIDInvalid")
 		return
 	}
 	if err := pg.RetryNotificationDelivery(r.Context(), id); err != nil {
