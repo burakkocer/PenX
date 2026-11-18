@@ -1,0 +1,8 @@
+# Override: build ARTEX from this fork's source instead of pulling tomicdd/artex.
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+services:
+  artex:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    image: artex-tr:local

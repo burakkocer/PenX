@@ -1,0 +1,49 @@
+# syntax=docker/dockerfile:1
+#
+# Build this fork (Turkish/English UI) from source — no prebuilt binary needed.
+# Used by docker-compose.local.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+#
+# Stage 1: static-export the Next.js frontend. Stage 2: embed it in the Go binary.
+# Stage 3: same runtime image as the upstream Dockerfile.
+
+FROM node:22-bookworm-slim AS web
+WORKDIR /src/web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build:static
+
+FROM golang:1.26-bookworm AS gobuild
+# go.mod pins a patch release; let Go fetch the exact toolchain if the image is older.
+ENV GOTOOLCHAIN=auto CGO_ENABLED=0
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY --from=web /src/web/out/ ./server/webui/dist/
+ARG ARTEX_BUILD_VERSION=local-i18n
+RUN go build -tags embedui -trimpath \
+      -ldflags "-s -w -buildid= -X main.version=${ARTEX_BUILD_VERSION}" \
+      -o /out/artex ./cmd/artex
+
+FROM python:3.12-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates ripgrep curl wget vim git jq unzip \
+      dnsutils iputils-ping netcat-openbsd inetutils-telnet whois nmap \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+RUN npm install -g @playwright/mcp@latest @playwright/cli@latest playwright@latest \
+    && playwright-cli --help \
+    && playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=gobuild /out/artex /app/artex
+COPY start.sh /app/start.sh
+RUN chmod +x /app/artex /app/start.sh
+COPY skills/ /app/skills/
+VOLUME ["/app/data"]
+EXPOSE 8787 8788
+ENTRYPOINT ["/app/start.sh"]
+CMD ["-addr", ":8787", "-proxy", ":8788"]
